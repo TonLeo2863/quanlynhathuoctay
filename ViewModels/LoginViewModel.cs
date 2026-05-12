@@ -32,18 +32,15 @@ namespace PharmacySalesApp.ViewModels
             LoginCommand = new RelayCommand(Login);
         }
 
-        private void Login(object obj)
-        {
-            if (Username == "admin" && Password == "123")
-            {
-                AppSession.CurrentUser = new User
-                {
-                    Id = 1,
-                    Username = Username
-                };
+        var user = authService.Login(Username, Password);
 
-                // TODO: chuyển sang MainView
-            }
-        }
+if (user.Role == "Employee")
+{
+    OpenEmployeeMain();
+    }
+else if (user.Role == "Manager" || user.Role == "Admin")
+{
+    OpenManagerMain();
+}
     }
 }
