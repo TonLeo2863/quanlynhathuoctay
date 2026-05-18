@@ -1,8 +1,9 @@
-﻿using System;
-
-public class Class1
+﻿namespace PharmacySalesApp.ViewModels
 {
-	public Class1()
-	{
-	}
+    public class ManagerMainViewModel : BaseViewModel
+    {
+        public ManagerMainViewModel()
+        {
+        }
+    }
 }

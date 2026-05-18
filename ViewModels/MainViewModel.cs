@@ -1,5 +1,4 @@
 ﻿using OfficeOpenXml;
-using PharmacyApp.ViewModels;
 using PharmacySalesApp.Models;
 using System;
 using System.Collections.Generic;
@@ -11,8 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using static PharmacySalesApp.ViewModels.MainViewModel;
-// Nếu file RelayCommand của bạn nằm trong thư mục ViewModels thì không cần dùng using PharmacyApp.ViewModels; nữa. 
-// Đảm bảo namespace của RelayCommand.cs là PharmacySalesApp.ViewModels
+using PharmacySalesApp.Commands;
 
 namespace PharmacySalesApp.ViewModels
 {

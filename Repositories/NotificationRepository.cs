@@ -1,8 +1,9 @@
-﻿using System;
-
-public class Class1
+﻿namespace PharmacySalesApp.Repositories
 {
-	public Class1()
-	{
-	}
+    public class NotificationRepository
+    {
+        public NotificationRepository()
+        {
+        }
+    }
 }

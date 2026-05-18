@@ -1,8 +1,9 @@
-﻿using System;
-
-public class Class1
+﻿namespace PharmacySalesApp.Services
 {
-	public Class1()
-	{
-	}
+    public class InvoiceService
+    {
+        public InvoiceService()
+        {
+        }
+    }
 }
