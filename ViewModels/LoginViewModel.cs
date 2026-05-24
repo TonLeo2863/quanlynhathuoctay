@@ -5,6 +5,7 @@ using System;
 using System.Windows;
 using System.Windows.Input;
 using System.Linq;
+using PharmacySalesApp.Services;
 
 namespace PharmacySalesApp.ViewModels
 {
@@ -47,18 +48,18 @@ namespace PharmacySalesApp.ViewModels
                 return;
             }
 
-            // Tạm thời cho chạy app trước.
-            // Sau khi app build được, mình sẽ chỉnh tiếp phần kiểm tra user từ database.
-            var user = new User
+            AuthService authService = new AuthService();
+            var user = authService.Login(Username, Password);
+
+            if (user == null)
             {
-                Id = 1,
-                Username = Username,
-                Role = "Admin"
-            };
+                MessageBox.Show("Sai tài khoản hoặc mật khẩu.");
+                return;
+            }
 
             AppSession.CurrentUser = user;
 
-            if (user.Role == "Employee")
+            if (user.Role == "NhanVien" || user.Role == "Cashier")
             {
                 OpenEmployeeMain();
             }
@@ -75,6 +76,7 @@ namespace PharmacySalesApp.ViewModels
         private void OpenEmployeeMain()
         {
             MainWindow mainWindow = new MainWindow();
+            Application.Current.MainWindow = mainWindow;
             mainWindow.Show();
 
             CloseLoginWindow();
@@ -83,6 +85,7 @@ namespace PharmacySalesApp.ViewModels
         private void OpenManagerMain()
         {
             MainWindow mainWindow = new MainWindow();
+            Application.Current.MainWindow = mainWindow;
             mainWindow.Show();
 
             CloseLoginWindow();
@@ -91,9 +94,9 @@ namespace PharmacySalesApp.ViewModels
         private void CloseLoginWindow()
         {
             Application.Current.Windows
-                .OfType<Window>()
-                .FirstOrDefault(w => w.IsActive)
-                ?.Close();
+            .OfType<LoginView>()
+            .FirstOrDefault()
+            ?.Close();
         }
     }
 }

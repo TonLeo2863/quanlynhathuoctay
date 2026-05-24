@@ -11,7 +11,7 @@ namespace PharmacySalesApp.Services
             con.Open();
 
             string query = @"
-                SELECT Id, Username, Role
+                SELECT Id, Username,Name, Role
                 FROM Users
                 WHERE Username = @Username AND Password = @Password";
 
@@ -27,6 +27,7 @@ namespace PharmacySalesApp.Services
                 {
                     Id = Convert.ToInt32(reader["Id"]),
                     Username = reader["Username"].ToString() ?? "",
+                    Name = reader["Name"].ToString() ?? "",
                     Role = reader["Role"].ToString() ?? ""
                 };
             }

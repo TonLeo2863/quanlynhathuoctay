@@ -7,7 +7,7 @@ namespace PharmacySalesApp
 {
     public partial class App : Application
     {
-        public static string ConnectionString = @"Server=.;Database=PharmacyDB;Trusted_Connection=True;Encrypt=False;";
+        public static string ConnectionString = @"Server=LAPTOP-CVVU9O3R\SQLEXPRESS;Database=PharmacyDB;Trusted_Connection=True;Encrypt=False;";
 
         public App()
         {
@@ -30,9 +30,9 @@ namespace PharmacySalesApp
                 this.MainWindow = splash;
                 splash.Show();
                 await Task.Delay(2500);
-                MainWindow mainWindow = new MainWindow();
-                this.MainWindow = mainWindow;
-                mainWindow.Show();
+                LoginView loginView = new LoginView();
+                this.MainWindow = loginView;
+                loginView.Show();
                 splash.Close();
             }
             catch (Exception ex)

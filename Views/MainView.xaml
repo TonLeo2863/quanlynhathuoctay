@@ -8,7 +8,7 @@
         Background="#E5E7EB">
 
     <Window.Resources>
-		<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <Style TargetType="Border" x:Key="AppleBox">
             <Setter Property="Background" Value="White"/>
             <Setter Property="CornerRadius" Value="12"/>
@@ -61,8 +61,36 @@
     </Window.Resources>
 
     <Grid>
-        <TabControl Margin="10" Background="Transparent" BorderThickness="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="55"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
+        <!-- HEADER -->
+        <Border Grid.Row="0"
+                Background="White"
+                BorderBrush="#D1D5DB"
+                BorderThickness="0,0,0,1"
+                Padding="15,0">
+            <DockPanel VerticalAlignment="Center">
+                <TextBlock Text="💊 PHẦN MỀM QUẢN LÝ NHÀ THUỐC"
+                           FontSize="18" FontWeight="Bold"
+                           Foreground="#111827" VerticalAlignment="Center"
+                           DockPanel.Dock="Left"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+                    <TextBlock Text="{Binding CurrentUserInfo}"
+                               VerticalAlignment="Center" Foreground="#374151"
+                               FontWeight="SemiBold" Margin="0,0,15,0"/>
+                    <Button Content="Đăng xuất" Width="100" Height="35"
+                            Background="#EF4444" Foreground="White"
+                            Click="Logout_Click"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <TabControl Grid.Row="1" Margin="10" Background="Transparent" BorderThickness="0">
+
+            <!-- TAB QUẢN LÝ THUỐC -->
             <TabItem Header="💊 Quản lý thuốc">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -70,70 +98,96 @@
                         <ColumnDefinition Width="2*" />
                     </Grid.ColumnDefinitions>
 
+                    <!-- Danh sách thuốc -->
                     <Border Style="{StaticResource AppleBox}">
-                        <DataGrid ItemsSource="{Binding Medicines}" SelectedItem="{Binding SelectedMedicine}"
-                                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" RowHeight="35"
-                                  Background="Transparent" BorderThickness="0">
+                        <DataGrid x:Name="MedicinesDataGrid"
+                                  ItemsSource="{Binding Medicines}"
+                                  SelectedItem="{Binding SelectedMedicine, Mode=TwoWay}"
+                                  SelectionMode="Extended"
+                                  SelectionUnit="FullRow"
+                                  AutoGenerateColumns="False"
+                                  IsReadOnly="True"
+                                  CanUserAddRows="False"
+                                  RowHeight="35"
+                                  Background="Transparent"
+                                  BorderThickness="0">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Tên thuốc" Binding="{Binding Name}" Width="*" />
                                 <DataGridTextColumn Header="Đơn vị" Binding="{Binding Unit}" Width="100" />
                                 <DataGridTextColumn Header="Giá" Binding="{Binding Price}" Width="120" />
                                 <DataGridTextColumn Header="Tồn kho" Binding="{Binding Quantity}" Width="100" />
                             </DataGrid.Columns>
-							<DataGrid.RowStyle>
-								<Style TargetType="DataGridRow">
-									<Style.Triggers>
-										<DataTrigger Binding="{Binding IsLowStock}" Value="True">
-											<Setter Property="Background" Value="#FFB3B3"/>
-										</DataTrigger>
-									</Style.Triggers>
-								</Style>
-							</DataGrid.RowStyle>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsLowStock}" Value="True">
+                                            <Setter Property="Background" Value="#FFB3B3"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
                         </DataGrid>
                     </Border>
 
+                    <!-- ✅ FIX: Dùng Grid thay StackPanel để nút không bị đẩy ra ngoài -->
                     <Border Grid.Column="1" Style="{StaticResource AppleBox}">
-                        <StackPanel>
-                            <TextBlock Text="Thông tin thuốc" FontWeight="Bold" FontSize="18" Margin="0,0,0,15"/>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                            <TextBlock Text="Tên thuốc" Margin="0,5,0,0" Foreground="#4B5563"/>
-                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
+                            <!-- Phần form cuộn được nếu cần -->
+                            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+                                <StackPanel>
+                                    <TextBlock Text="Thông tin thuốc" FontWeight="Bold" FontSize="18" Margin="0,0,0,15"/>
 
-                            <TextBlock Text="Đơn vị tính" Margin="0,15,0,0" Foreground="#4B5563"/>
-                            <ComboBox ItemsSource="{Binding AvailableUnits}" SelectedItem="{Binding Unit}"/>
+                                    <TextBlock Text="Tên thuốc" Margin="0,5,0,0" Foreground="#4B5563"/>
+                                    <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
 
-                            <TextBlock Text="Giá (VNĐ)" Margin="0,15,0,0" Foreground="#4B5563"/>
-                            <TextBox Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <TextBlock Text="Đơn vị tính" Margin="0,15,0,0" Foreground="#4B5563"/>
+                                    <ComboBox ItemsSource="{Binding AvailableUnits}" SelectedItem="{Binding Unit}"/>
 
-                            <TextBlock Text="Số lượng" Margin="0,15,0,0" Foreground="#4B5563"/>
-                            <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}"/>
-                            <TextBlock Text="Hình ảnh thuốc" Margin="0,15,0,0" Foreground="#4B5563"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                <Border Width="100" Height="100" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="8" Background="#F9FAFB">
-                                    <Image Source="{Binding ImagePath}" Stretch="Uniform" Margin="5"/>
-                                </Border>
+                                    <TextBlock Text="Giá (VNĐ)" Margin="0,15,0,0" Foreground="#4B5563"/>
+                                    <TextBox Text="{Binding Price, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                <Button Content="Tải ảnh lên" Width="100" Height="36" Margin="15,0,0,0" 
-            Background="#6B7280" Command="{Binding SelectImageCommand}"/>
-                            </StackPanel>
-                            <Grid Margin="0,25,0,0">
+                                    <TextBlock Text="Số lượng" Margin="0,15,0,0" Foreground="#4B5563"/>
+                                    <TextBox Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}"/>
+
+                                    <TextBlock Text="Hình ảnh thuốc" Margin="0,15,0,0" Foreground="#4B5563"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                        <Border Width="80" Height="80" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="8" Background="#F9FAFB">
+                                            <Image Source="{Binding ImagePath}" Stretch="Uniform" Margin="5"/>
+                                        </Border>
+                                        <Button Content="Tải ảnh lên" Width="100" Height="36" Margin="15,0,0,0"
+                                                Background="#6B7280" Command="{Binding SelectImageCommand}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+
+                            <!-- ✅ Nút luôn cố định ở dưới, không bị đẩy ra ngoài -->
+                            <Grid Grid.Row="1" Margin="0,15,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Button Grid.Column="0" Content="Thêm" Height="40" Margin="0,0,5,0" Background="#3B82F6" Command="{Binding AddCommand}"/>
-                                <Button Grid.Column="1" Content="Sửa" Height="40" Margin="5,0,5,0" Background="#F59E0B" Command="{Binding UpdateCommand}"/>
-                                <Button Grid.Column="2" Content="Xóa" Height="40" Margin="5,0,5,0" Background="#EF4444" Command="{Binding DeleteCommand}"/>
-
-                                <Button Grid.Column="3" Content="Nhập Excel" Height="40" Margin="5,0,0,0" Background="#10B981" Command="{Binding ImportExcelCommand}"/>
+                                <Button Grid.Column="0" Content="Thêm" Height="40" Margin="0,0,4,0"
+                                        Background="#3B82F6" Command="{Binding AddCommand}"/>
+                                <Button Grid.Column="1" Content="Sửa" Height="40" Margin="4,0,4,0"
+                                        Background="#F59E0B" Command="{Binding UpdateCommand}"/>
+                                <Button Grid.Column="2" Content="Xóa" Height="40" Margin="4,0,4,0"
+                                        Background="#EF4444" Click="DeleteSelectedMedicines_Click"/>
+                                <Button Grid.Column="3" Content="Nhập Excel" Height="40" Margin="4,0,0,0"
+                                        Background="#10B981" Command="{Binding ImportExcelCommand}"/>
                             </Grid>
-                        </StackPanel>
+                        </Grid>
                     </Border>
                 </Grid>
             </TabItem>
 
+            <!-- TAB BÁN HÀNG -->
             <TabItem Header="🛒 Bán hàng">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -143,12 +197,16 @@
 
                     <Border Style="{StaticResource AppleBox}">
                         <DockPanel>
-                            <TextBox DockPanel.Dock="Top" Margin="0,0,0,15" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Tìm theo tên thuốc"/>
-
-                            <Button DockPanel.Dock="Bottom" Content="Thêm vào giỏ hàng" Height="45" Margin="0,15,0,0" Background="#10B981" Command="{Binding AddToCartCommand}"/>
-
-                            <DataGrid ItemsSource="{Binding FilteredMedicines}" SelectedItem="{Binding SelectedSellMedicine}"
-                                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" RowHeight="35"
+                            <TextBox DockPanel.Dock="Top" Margin="0,0,0,15"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Tìm theo tên thuốc"/>
+                            <Button DockPanel.Dock="Bottom" Content="Thêm vào giỏ hàng"
+                                    Height="45" Margin="0,15,0,0" Background="#10B981"
+                                    Command="{Binding AddToCartCommand}"/>
+                            <DataGrid ItemsSource="{Binding FilteredMedicines}"
+                                      SelectedItem="{Binding SelectedSellMedicine}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" RowHeight="35"
                                       Background="Transparent" BorderThickness="0">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Tên thuốc" Binding="{Binding Name}" Width="*" />
@@ -162,18 +220,24 @@
 
                     <Border Grid.Column="1" Style="{StaticResource AppleBox}">
                         <DockPanel>
-                            <TextBlock Text="Giỏ hàng hiện tại" FontSize="18" FontWeight="Bold" DockPanel.Dock="Top" Margin="0,0,0,15"/>
-
+                            <TextBlock Text="Giỏ hàng hiện tại" FontSize="18" FontWeight="Bold"
+                                       DockPanel.Dock="Top" Margin="0,0,0,15"/>
                             <StackPanel DockPanel.Dock="Bottom" Margin="0,15,0,0">
-                                <TextBlock Text="Ghi chú (Liều dùng, cách uống...)" Foreground="#4B5563" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                                <TextBox Text="{Binding InvoiceNote, UpdateSourceTrigger=PropertyChanged}" 
-             Height="60" TextWrapping="Wrap" AcceptsReturn="True" VerticalContentAlignment="Top" Padding="10"/>
-
-                                <TextBlock Text="{Binding TotalAmount, StringFormat=Tổng tiền: {0:N0} đ}" FontSize="20" FontWeight="Bold" Foreground="#EF4444" HorizontalAlignment="Right" Margin="0,15,0,0"/>
-                                <Button Content="In Bill &amp; Thanh Toán" Height="45" Margin="0,15,0,0" Background="#3B82F6" Command="{Binding PrintBillCommand}"/>
+                                <TextBlock Text="Ghi chú (Liều dùng, cách uống...)"
+                                           Foreground="#4B5563" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding InvoiceNote, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="60" TextWrapping="Wrap" AcceptsReturn="True"
+                                         VerticalContentAlignment="Top" Padding="10"/>
+                                <TextBlock Text="{Binding TotalAmount, StringFormat=Tổng tiền: {0:N0} đ}"
+                                           FontSize="20" FontWeight="Bold" Foreground="#EF4444"
+                                           HorizontalAlignment="Right" Margin="0,15,0,0"/>
+                                <Button Content="In Bill &amp; Thanh Toán" Height="45" Margin="0,15,0,0"
+                                        Background="#3B82F6" Command="{Binding PrintBillCommand}"/>
                             </StackPanel>
-
-                            <DataGrid ItemsSource="{Binding CartItems}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" RowHeight="35" Background="Transparent" BorderThickness="0">
+                            <DataGrid ItemsSource="{Binding CartItems}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" RowHeight="35"
+                                      Background="Transparent" BorderThickness="0">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Tên thuốc" Binding="{Binding Name}" Width="*" />
                                     <DataGridTextColumn Header="SL" Binding="{Binding Quantity}" Width="50" />
@@ -185,11 +249,16 @@
                 </Grid>
             </TabItem>
 
+            <!-- TAB LỊCH SỬ -->
             <TabItem Header="🧾 Lịch sử Hóa đơn">
                 <Border Style="{StaticResource AppleBox}">
                     <DockPanel>
-                        <TextBlock DockPanel.Dock="Top" Text="Lịch sử các hóa đơn đã xuất" FontWeight="Bold" FontSize="18" Margin="0,0,0,15"/>
-                        <DataGrid ItemsSource="{Binding Invoices}" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" RowHeight="35" Background="Transparent" BorderThickness="0">
+                        <TextBlock DockPanel.Dock="Top" Text="Lịch sử các hóa đơn đã xuất"
+                                   FontWeight="Bold" FontSize="18" Margin="0,0,0,15"/>
+                        <DataGrid ItemsSource="{Binding Invoices}"
+                                  AutoGenerateColumns="False" IsReadOnly="True"
+                                  CanUserAddRows="False" RowHeight="35"
+                                  Background="Transparent" BorderThickness="0">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Mã Hóa Đơn" Binding="{Binding InvoiceId}" Width="150" />
                                 <DataGridTextColumn Header="Thời gian in" Binding="{Binding CreatedDate, StringFormat='dd/MM/yyyy HH:mm:ss'}" Width="180" />
@@ -203,42 +272,31 @@
 
         </TabControl>
 
-        <Popup IsOpen="{Binding IsNotificationVisible}" Placement="Center" AllowsTransparency="True" StaysOpen="True">
+        <!-- Popup thông báo -->
+        <Popup IsOpen="{Binding IsNotificationVisible}" Placement="Center"
+               AllowsTransparency="True" StaysOpen="True">
             <Border Background="#10B981" CornerRadius="15" Padding="30,15" Margin="20">
                 <Border.Effect>
                     <DropShadowEffect BlurRadius="15" ShadowDepth="4" Opacity="0.3"/>
                 </Border.Effect>
-                <TextBlock Text="{Binding NotificationMessage}" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding NotificationMessage}" Foreground="White"
+                           FontSize="18" FontWeight="Bold" HorizontalAlignment="Center"/>
             </Border>
         </Popup>
-		<Grid Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
-      Background="#80000000"
-      Panel.ZIndex="999">
 
-			<Border Background="White"
-					Width="300"
-					Height="150"
-					CornerRadius="12"
-					HorizontalAlignment="Center"
-					VerticalAlignment="Center"
-					Padding="20">
-
-				<StackPanel VerticalAlignment="Center">
-					<TextBlock Text="Đang import dữ liệu..."
-							   FontWeight="Bold"
-							   HorizontalAlignment="Center"
-							   Margin="0,0,0,15"/>
-
-					<ProgressBar Height="20"
-								 Minimum="0"
-								 Maximum="100"
-								 Value="{Binding ImportProgress}"/>
-
-					<TextBlock Text="{Binding ImportProgress, StringFormat=Tiến trình: {0}%}"
-							   HorizontalAlignment="Center"
-							   Margin="0,10,0,0"/>
-				</StackPanel>
-			</Border>
-		</Grid>
+        <!-- Loading overlay -->
+        <Grid Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
+              Background="#80000000" Panel.ZIndex="999">
+            <Border Background="White" Width="300" Height="150" CornerRadius="12"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Đang import dữ liệu..." FontWeight="Bold"
+                               HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                    <ProgressBar Height="20" Minimum="0" Maximum="100" Value="{Binding ImportProgress}"/>
+                    <TextBlock Text="{Binding ImportProgress, StringFormat=Tiến trình: {0}%}"
+                               HorizontalAlignment="Center" Margin="0,10,0,0"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>
