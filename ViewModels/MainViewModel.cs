@@ -22,18 +22,39 @@ namespace PharmacySalesApp.ViewModels
         private bool _isNotificationVisible;
         public string NotificationMessage { get => _notificationMessage; set { _notificationMessage = value; OnPropertyChanged(); } }
         private string _notificationMessage = string.Empty;
-        
+
 
         // TAB QUẢN LÝ
         public ObservableCollection<Medicine> Medicines { get; set; }
+        public string CurrentUserInfo
+        {
+            get
+            {
+                var user = AppSession.CurrentUser;
+                if (user == null) return "";
+                return $"{user.Username} - {user.Role}";
+            }
+        }
         private Medicine? _selectedMedicine;
         public Medicine? SelectedMedicine
         {
             get => _selectedMedicine;
             set
             {
-                _selectedMedicine = value; OnPropertyChanged();
-                if (value != null) { Name = value.Name; Unit = value.Unit; Price = value.Price; Quantity = value.Quantity; ImagePath = value.ImagePath; }
+                _selectedMedicine = value;
+                OnPropertyChanged();
+
+                if (value != null)
+                {
+                    Name = value.Name;
+                    Unit = value.Unit;
+                    Price = value.Price;
+                    Quantity = value.Quantity;
+                    ImagePath = value.ImagePath;
+                }
+
+                (UpdateCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (DeleteCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
@@ -113,8 +134,7 @@ namespace PharmacySalesApp.ViewModels
         private void LoadMedicinesFromDatabase()
         {
             Medicines.Clear();
-            // Lấy thuốc từ CSDL mới của nhóm bạn (Dùng MedicineName)
-            string query = "SELECT Id, MedicineName AS Name, Unit, Price, Quantity, ImagePath FROM Medicines WHERE IsDeleted = 0";
+            string query = "SELECT Id, Name, Unit, Price, Quantity, ImagePath FROM Medicines";
             using (SqlConnection con = new SqlConnection(App.ConnectionString))
             {
                 try
@@ -143,7 +163,6 @@ namespace PharmacySalesApp.ViewModels
         private void LoadInvoicesFromDatabase()
         {
             Invoices.Clear();
-            // Đổi InvoiceId thành Id và lấy thêm Note
             string query = "SELECT Id AS InvoiceId, CreatedDate, TotalAmount, Note FROM Invoices";
             using (SqlConnection con = new SqlConnection(App.ConnectionString))
             {
@@ -167,33 +186,54 @@ namespace PharmacySalesApp.ViewModels
             }
         }
 
+        // ✅ FIX: AddMedicine tự động tạo batch khi thêm thuốc mới
         private void AddMedicine()
         {
             if (string.IsNullOrWhiteSpace(Name)) return;
-            // Thêm CategoryId = 1 (mặc định) để không bị lỗi khóa ngoại
-            string query = "INSERT INTO Medicines (MedicineName, Unit, Price, Quantity, ImagePath, CategoryId) VALUES (@Name, @Unit, @Price, @Qty, @ImagePath, 1)";
+
+            // Lấy Id của thuốc vừa insert bằng SCOPE_IDENTITY()
+            string query = @"
+                INSERT INTO Medicines (Name, Unit, Price, Quantity, ImagePath)
+                VALUES (@Name, @Unit, @Price, @Qty, @ImagePath);
+                SELECT SCOPE_IDENTITY()";
+
             using (SqlConnection con = new SqlConnection(App.ConnectionString))
             {
                 try
                 {
                     con.Open();
                     SqlCommand cmd = new SqlCommand(query, con);
-                    cmd.Parameters.AddWithValue("@Name", Name); cmd.Parameters.AddWithValue("@Unit", Unit);
-                    cmd.Parameters.AddWithValue("@Price", Price); cmd.Parameters.AddWithValue("@Qty", Quantity);
+                    cmd.Parameters.AddWithValue("@Name", Name);
+                    cmd.Parameters.AddWithValue("@Unit", Unit);
+                    cmd.Parameters.AddWithValue("@Price", Price);
+                    cmd.Parameters.AddWithValue("@Qty", Quantity);
                     cmd.Parameters.AddWithValue("@ImagePath", ImagePath ?? "");
-                    cmd.ExecuteNonQuery();
+
+                    int newMedId = Convert.ToInt32(cmd.ExecuteScalar());
+
+                    // Tự động tạo 1 batch mặc định (hạn dùng 2 năm)
+                    string insertBatch = @"
+                        INSERT INTO MedicineBatches (MedicineId, Quantity, ExpiryDate)
+                        VALUES (@MedId, @Qty, @Expiry)";
+                    SqlCommand cmdBatch = new SqlCommand(insertBatch, con);
+                    cmdBatch.Parameters.AddWithValue("@MedId", newMedId);
+                    cmdBatch.Parameters.AddWithValue("@Qty", Quantity);
+                    cmdBatch.Parameters.AddWithValue("@Expiry", DateTime.Now.AddYears(2));
+                    cmdBatch.ExecuteNonQuery();
                 }
                 catch (Exception ex) { MessageBox.Show("Lỗi thêm: " + ex.Message); }
             }
+
             ClearForm();
             LoadMedicinesFromDatabase();
         }
 
+        // ✅ FIX: UpdateMedicine đồng bộ batch khi cập nhật số lượng
         private void UpdateMedicine()
         {
             if (SelectedMedicine == null) return;
-            // Cập nhật dùng MedicineName
-            string query = "UPDATE Medicines SET MedicineName=@Name, Unit=@Unit, Price=@Price, Quantity=@Qty, ImagePath=@ImagePath WHERE Id=@Id";
+
+            string query = "UPDATE Medicines SET Name=@Name, Unit=@Unit, Price=@Price, Quantity=@Qty, ImagePath=@ImagePath WHERE Id=@Id";
             using (SqlConnection con = new SqlConnection(App.ConnectionString))
             {
                 try
@@ -201,10 +241,58 @@ namespace PharmacySalesApp.ViewModels
                     con.Open();
                     SqlCommand cmd = new SqlCommand(query, con);
                     cmd.Parameters.AddWithValue("@Id", SelectedMedicine.Id);
-                    cmd.Parameters.AddWithValue("@Name", Name); cmd.Parameters.AddWithValue("@Unit", Unit);
-                    cmd.Parameters.AddWithValue("@Price", Price); cmd.Parameters.AddWithValue("@Qty", Quantity);
+                    cmd.Parameters.AddWithValue("@Name", Name);
+                    cmd.Parameters.AddWithValue("@Unit", Unit);
+                    cmd.Parameters.AddWithValue("@Price", Price);
+                    cmd.Parameters.AddWithValue("@Qty", Quantity);
                     cmd.Parameters.AddWithValue("@ImagePath", ImagePath ?? "");
                     cmd.ExecuteNonQuery();
+
+                    // Kiểm tra batch đã tồn tại chưa
+                    string checkBatch = "SELECT COUNT(*) FROM MedicineBatches WHERE MedicineId = @MedId";
+                    SqlCommand cmdCheck = new SqlCommand(checkBatch, con);
+                    cmdCheck.Parameters.AddWithValue("@MedId", SelectedMedicine.Id);
+                    int batchCount = (int)cmdCheck.ExecuteScalar();
+
+                    if (batchCount == 0)
+                    {
+                        // Chưa có batch → tạo mới
+                        string insertBatch = @"
+                            INSERT INTO MedicineBatches (MedicineId, Quantity, ExpiryDate)
+                            VALUES (@MedId, @Qty, @Expiry)";
+                        SqlCommand cmdBatch = new SqlCommand(insertBatch, con);
+                        cmdBatch.Parameters.AddWithValue("@MedId", SelectedMedicine.Id);
+                        cmdBatch.Parameters.AddWithValue("@Qty", Quantity);
+                        cmdBatch.Parameters.AddWithValue("@Expiry", DateTime.Now.AddYears(2));
+                        cmdBatch.ExecuteNonQuery();
+                    }
+                    else
+                    {
+                        // Đã có batch → cập nhật tổng quantity vào batch mới nhất
+                        // (cộng thêm phần chênh lệch so với cũ)
+                        int diff = Quantity - SelectedMedicine.Quantity;
+                        if (diff != 0)
+                        {
+                            string updateBatch = @"
+                                UPDATE TOP(1) MedicineBatches 
+                                SET Quantity = Quantity + @Diff
+                                WHERE MedicineId = @MedId
+                                ORDER BY ExpiryDate DESC";
+                            // TOP(1) + ORDER không dùng được trực tiếp, dùng subquery:
+                            string updateBatchSql = @"
+                                UPDATE MedicineBatches
+                                SET Quantity = Quantity + @Diff
+                                WHERE Id = (
+                                    SELECT TOP 1 Id FROM MedicineBatches
+                                    WHERE MedicineId = @MedId
+                                    ORDER BY ExpiryDate DESC
+                                )";
+                            SqlCommand cmdUpdBatch = new SqlCommand(updateBatchSql, con);
+                            cmdUpdBatch.Parameters.AddWithValue("@Diff", diff);
+                            cmdUpdBatch.Parameters.AddWithValue("@MedId", SelectedMedicine.Id);
+                            cmdUpdBatch.ExecuteNonQuery();
+                        }
+                    }
                 }
                 catch (Exception ex) { MessageBox.Show("Lỗi sửa: " + ex.Message); }
             }
@@ -212,19 +300,31 @@ namespace PharmacySalesApp.ViewModels
         }
 
         private void DeleteMedicine()
+{
+    if (SelectedMedicine == null) return;
+    if (MessageBox.Show($"Chắc chắn xóa '{SelectedMedicine.Name}'?", "Xóa",
+        MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+    {
+        using (SqlConnection con = new SqlConnection(App.ConnectionString))
         {
-            if (SelectedMedicine == null) return;
-            if (MessageBox.Show($"Chắc chắn xóa '{SelectedMedicine.Name}'?", "Xóa", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            try
             {
-                string query = "UPDATE Medicines SET IsDeleted = 1 WHERE Id=@Id";
-                using (SqlConnection con = new SqlConnection(App.ConnectionString))
-                {
-                    try { con.Open(); SqlCommand cmd = new SqlCommand(query, con); cmd.Parameters.AddWithValue("@Id", SelectedMedicine.Id); cmd.ExecuteNonQuery(); }
-                    catch (Exception ex) { MessageBox.Show("Lỗi xóa: " + ex.Message); }
-                }
-                ClearForm(); LoadMedicinesFromDatabase();
+                con.Open();
+                SqlCommand cmdBatch = new SqlCommand(
+                    "DELETE FROM MedicineBatches WHERE MedicineId = @Id", con);
+                cmdBatch.Parameters.AddWithValue("@Id", SelectedMedicine.Id);
+                cmdBatch.ExecuteNonQuery();
+                SqlCommand cmd = new SqlCommand(
+                    "DELETE FROM Medicines WHERE Id = @Id", con);
+                cmd.Parameters.AddWithValue("@Id", SelectedMedicine.Id);
+                cmd.ExecuteNonQuery();
             }
+            catch (Exception ex) { MessageBox.Show("Lỗi xóa: " + ex.Message); }
         }
+        ClearForm();
+        LoadMedicinesFromDatabase();
+    }
+}
 
         private void ClearForm() { Name = string.Empty; Unit = AvailableUnits[0]; Price = 0; Quantity = 0; ImagePath = string.Empty; }
 
@@ -249,10 +349,10 @@ namespace PharmacySalesApp.ViewModels
             if (index >= 0) FilteredMedicines[index] = SelectedSellMedicine;
 
             CalculateTotal();
+            (PrintBillCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private void CalculateTotal() { TotalAmount = CartItems.Sum(c => c.TotalPrice); }
-        
 
         public class Customer
         {
@@ -261,7 +361,6 @@ namespace PharmacySalesApp.ViewModels
             public string Phone { get; set; }
             public int LoyaltyPoints { get; set; }
         }
-       
 
         private async void PrintBill()
         {
@@ -281,12 +380,13 @@ namespace PharmacySalesApp.ViewModels
                 {
                     con.Open();
 
-                    // 1. Lưu Hóa Đơn và LẤY MÃ SỐ ID TỰ ĐỘNG
+                    // 1. Lưu Hóa Đơn
                     string insertInv = @"
-                INSERT INTO Invoices (CustomerId, CreatedBy, CreatedDate, TotalAmount, Note)
-                OUTPUT INSERTED.Id
-                VALUES (@CustomerId, @CreatedBy, @Date, @Total, @Note)";
+                        INSERT INTO Invoices (InvoiceId, CustomerId, CreatedBy, CreatedDate, TotalAmount, Note)
+                        OUTPUT INSERTED.Id
+                        VALUES (@InvoiceId, @CustomerId, @CreatedBy, @Date, @Total, @Note)";
                     SqlCommand cmdInv = new SqlCommand(insertInv, con);
+                    cmdInv.Parameters.AddWithValue("@InvoiceId", "HD" + DateTime.Now.ToString("yyyyMMddHHmmss"));
                     cmdInv.Parameters.AddWithValue("@CustomerId", (object?)customerId ?? DBNull.Value);
                     cmdInv.Parameters.AddWithValue("@CreatedBy", createdBy);
                     cmdInv.Parameters.AddWithValue("@Date", date);
@@ -300,8 +400,8 @@ namespace PharmacySalesApp.ViewModels
                         int medId = 0;
                         decimal unitPrice = item.TotalPrice / item.Quantity;
 
-                        // Lấy Id của thuốc
-                        string findMed = "SELECT Id FROM Medicines WHERE MedicineName = @Name AND IsDeleted = 0";
+                        // Lấy Id thuốc
+                        string findMed = "SELECT Id FROM Medicines WHERE Name = @Name";
                         using (SqlCommand cmdFind = new SqlCommand(findMed, con))
                         {
                             cmdFind.Parameters.AddWithValue("@Name", item.Name);
@@ -313,34 +413,54 @@ namespace PharmacySalesApp.ViewModels
                         {
                             int remainingQty = item.Quantity;
 
-                            // Lấy danh sách batch theo ExpiryDate ASC (FEFO)
+                            // ✅ FIX: Tạo batch tự động nếu thuốc chưa có batch
+                            string checkBatch = "SELECT COUNT(*) FROM MedicineBatches WHERE MedicineId = @MedId AND Quantity > 0";
+                            using (SqlCommand cmdCheck = new SqlCommand(checkBatch, con))
+                            {
+                                cmdCheck.Parameters.AddWithValue("@MedId", medId);
+                                int batchCount = (int)cmdCheck.ExecuteScalar();
+
+                                if (batchCount == 0)
+                                {
+                                    // Lấy tồn kho hiện tại từ Medicines để tạo batch
+                                    string getQty = "SELECT Quantity FROM Medicines WHERE Id = @MedId";
+                                    SqlCommand cmdGetQty = new SqlCommand(getQty, con);
+                                    cmdGetQty.Parameters.AddWithValue("@MedId", medId);
+                                    int currentQty = Convert.ToInt32(cmdGetQty.ExecuteScalar());
+
+                                    string insertBatch = @"
+                                        INSERT INTO MedicineBatches (MedicineId, Quantity, ExpiryDate)
+                                        VALUES (@MedId, @Qty, @Expiry)";
+                                    SqlCommand cmdBatch = new SqlCommand(insertBatch, con);
+                                    cmdBatch.Parameters.AddWithValue("@MedId", medId);
+                                    cmdBatch.Parameters.AddWithValue("@Qty", currentQty);
+                                    cmdBatch.Parameters.AddWithValue("@Expiry", DateTime.Now.AddYears(2));
+                                    cmdBatch.ExecuteNonQuery();
+                                }
+                            }
+
+                            // Lấy danh sách batch theo FEFO (ExpiryDate ASC)
                             string selectBatches = @"
-                        SELECT Id, Quantity 
-                        FROM MedicineBatches 
-                        WHERE MedicineId = @MedId AND Quantity > 0
-                        ORDER BY ExpiryDate ASC";
+                                SELECT Id, Quantity 
+                                FROM MedicineBatches 
+                                WHERE MedicineId = @MedId AND Quantity > 0
+                                ORDER BY ExpiryDate ASC";
 
                             List<(int Id, int Qty)> batches = new List<(int, int)>();
-
                             using (SqlCommand cmdBatch = new SqlCommand(selectBatches, con))
                             {
                                 cmdBatch.Parameters.AddWithValue("@MedId", medId);
                                 using (SqlDataReader reader = cmdBatch.ExecuteReader())
                                 {
                                     while (reader.Read())
-                                    {
                                         batches.Add((reader.GetInt32(0), reader.GetInt32(1)));
-                                    }
                                 }
                             }
 
-                            // Xử lý FEFO
-                            
-
+                            // Trừ tồn kho theo FEFO
                             foreach (var batch in batches)
                             {
                                 if (remainingQty <= 0) break;
-
                                 int deduct = Math.Min(remainingQty, batch.Qty);
 
                                 string updateBatch = "UPDATE MedicineBatches SET Quantity = Quantity - @Deduct WHERE Id = @BatchId";
@@ -352,23 +472,30 @@ namespace PharmacySalesApp.ViewModels
                                 remainingQty -= deduct;
                             }
 
-                            // ❗ Check thiếu hàng
+                            // Kiểm tra còn thiếu hàng không
                             if (remainingQty > 0)
                             {
-                                MessageBox.Show("Không đủ hàng trong kho!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                                MessageBox.Show(
+                                    $"Không đủ hàng trong kho!\nThuốc: {item.Name}\nCần thêm: {remainingQty}",
+                                    "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                                 return;
                             }
 
                             // Lưu chi tiết hóa đơn
-                            string insertDet = "INSERT INTO InvoiceDetails (InvoiceId, MedicineId, Quantity, UnitPrice) VALUES (@InvId, @MedId, @Qty, @Price)";
+                            string insertDet = @"
+                                INSERT INTO InvoiceDetails
+                                (InvoiceId, MedicineId, MedicineName, Quantity, UnitPrice, TotalPrice)
+                                VALUES (@InvId, @MedId, @MedicineName, @Qty, @UnitPrice, @TotalPrice)";
                             SqlCommand cmdDet = new SqlCommand(insertDet, con);
                             cmdDet.Parameters.AddWithValue("@InvId", newInvoiceId);
                             cmdDet.Parameters.AddWithValue("@MedId", medId);
+                            cmdDet.Parameters.AddWithValue("@MedicineName", item.Name);
                             cmdDet.Parameters.AddWithValue("@Qty", item.Quantity);
-                            cmdDet.Parameters.AddWithValue("@Price", unitPrice);
+                            cmdDet.Parameters.AddWithValue("@UnitPrice", unitPrice);
+                            cmdDet.Parameters.AddWithValue("@TotalPrice", item.TotalPrice);
                             cmdDet.ExecuteNonQuery();
 
-                            // Cập nhật tổng tồn kho
+                            // Cập nhật tổng tồn kho bảng Medicines
                             string updateQty = "UPDATE Medicines SET Quantity = Quantity - @Qty WHERE Id = @MedId";
                             SqlCommand cmdUpd = new SqlCommand(updateQty, con);
                             cmdUpd.Parameters.AddWithValue("@Qty", item.Quantity);
@@ -380,7 +507,7 @@ namespace PharmacySalesApp.ViewModels
                     // 3. Cập nhật điểm khách hàng (nếu có)
                     if (customerId.HasValue)
                     {
-                        int pointsEarned = (int)(TotalAmount / 1000); // 1 điểm / 1000 đ
+                        int pointsEarned = (int)(TotalAmount / 1000);
                         string updatePoints = "UPDATE Customers SET LoyaltyPoints = LoyaltyPoints + @Points WHERE Id = @CustomerId";
                         SqlCommand cmdPoints = new SqlCommand(updatePoints, con);
                         cmdPoints.Parameters.AddWithValue("@Points", pointsEarned);
@@ -398,6 +525,7 @@ namespace PharmacySalesApp.ViewModels
             // 4. Clear Cart + Load lại dữ liệu
             CartItems.Clear();
             CalculateTotal();
+            (PrintBillCommand as RelayCommand)?.RaiseCanExecuteChanged();
             InvoiceNote = string.Empty;
             LoadMedicinesFromDatabase();
             LoadInvoicesFromDatabase();
@@ -408,6 +536,7 @@ namespace PharmacySalesApp.ViewModels
             await Task.Delay(2000);
             IsNotificationVisible = false;
         }
+
         private void SelectImage()
         {
             Microsoft.Win32.OpenFileDialog dlg = new Microsoft.Win32.OpenFileDialog();
@@ -420,9 +549,8 @@ namespace PharmacySalesApp.ViewModels
                     string selectedFilePath = dlg.FileName;
                     string imagesFolder = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images");
                     if (!System.IO.Directory.Exists(imagesFolder))
-                    {
                         System.IO.Directory.CreateDirectory(imagesFolder);
-                    }
+
                     string fileName = Guid.NewGuid().ToString() + System.IO.Path.GetExtension(selectedFilePath);
                     string destinationPath = System.IO.Path.Combine(imagesFolder, fileName);
                     System.IO.File.Copy(selectedFilePath, destinationPath, true);
@@ -449,13 +577,26 @@ namespace PharmacySalesApp.ViewModels
                     for (int i = 0; i < total; i++)
                     {
                         var item = rows[i];
-                        string query = "INSERT INTO Medicines (MedicineName, Unit, Price, Quantity, ImagePath, CategoryId) VALUES (@Name, @Unit, @Price, @Qty, '', 1)";
+                        // ✅ FIX: Import Excel cũng tạo batch
+                        string query = @"
+                            INSERT INTO Medicines (Name, Unit, Price, Quantity, ImagePath)
+                            VALUES (@Name, @Unit, @Price, @Qty, '');
+                            SELECT SCOPE_IDENTITY()";
                         SqlCommand cmd = new SqlCommand(query, con);
                         cmd.Parameters.AddWithValue("@Name", item.Name);
                         cmd.Parameters.AddWithValue("@Unit", item.Unit);
                         cmd.Parameters.AddWithValue("@Price", item.Price);
                         cmd.Parameters.AddWithValue("@Qty", item.Quantity);
-                        cmd.ExecuteNonQuery();
+                        int newMedId = Convert.ToInt32(cmd.ExecuteScalar());
+
+                        string insertBatch = @"
+                            INSERT INTO MedicineBatches (MedicineId, Quantity, ExpiryDate)
+                            VALUES (@MedId, @Qty, @Expiry)";
+                        SqlCommand cmdBatch = new SqlCommand(insertBatch, con);
+                        cmdBatch.Parameters.AddWithValue("@MedId", newMedId);
+                        cmdBatch.Parameters.AddWithValue("@Qty", item.Quantity);
+                        cmdBatch.Parameters.AddWithValue("@Expiry", DateTime.Now.AddYears(2));
+                        cmdBatch.ExecuteNonQuery();
 
                         int percent = (i + 1) * 100 / total;
                         App.Current.Dispatcher.Invoke(() => { ImportProgress = percent; });
@@ -501,32 +642,23 @@ namespace PharmacySalesApp.ViewModels
             catch (Exception ex) { MessageBox.Show("Lỗi khi đọc file Excel: " + ex.Message); }
             return list;
         }
-            
 
-
-        //( thêm phần nhập số đth và tích điểm )
         public string CustomerPhone { get; set; }
         private Customer _selectedCustomer;
         public Customer SelectedCustomer
         {
             get => _selectedCustomer;
-            set
-            {
-                _selectedCustomer = value;
-                OnPropertyChanged();
-            }
+            set { _selectedCustomer = value; OnPropertyChanged(); }
         }
 
         private void FindCustomerByPhone()
         {
             string query = "SELECT * FROM Customers WHERE Phone = @Phone";
-
             using (SqlConnection con = new SqlConnection(App.ConnectionString))
             {
                 con.Open();
                 SqlCommand cmd = new SqlCommand(query, con);
                 cmd.Parameters.AddWithValue("@Phone", CustomerPhone);
-
                 var reader = cmd.ExecuteReader();
                 if (reader.Read())
                 {
@@ -540,9 +672,40 @@ namespace PharmacySalesApp.ViewModels
                 }
             }
         }
+
+        public void DeleteMedicines(List<Medicine> selectedMedicines)
+        {
+            if (selectedMedicines == null || selectedMedicines.Count == 0) return;
+            if (MessageBox.Show($"Chắc chắn xóa {selectedMedicines.Count} thuốc?", "Xóa",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+            using (SqlConnection con = new SqlConnection(App.ConnectionString))
+            {
+                try
+                {
+                    con.Open();
+                    foreach (var medicine in selectedMedicines)
+                    {
+                        SqlCommand cmdBatch = new SqlCommand(
+                            "DELETE FROM MedicineBatches WHERE MedicineId = @Id", con);
+                        cmdBatch.Parameters.AddWithValue("@Id", medicine.Id);
+                        cmdBatch.ExecuteNonQuery();
+
+                        SqlCommand cmd = new SqlCommand(
+                            "DELETE FROM Medicines WHERE Id = @Id", con);
+                        cmd.Parameters.AddWithValue("@Id", medicine.Id);
+                        cmd.ExecuteNonQuery();
+                    }
+                }
+                catch (Exception ex) { MessageBox.Show("Lỗi xóa: " + ex.Message); }
+            }
+            ClearForm();
+            LoadMedicinesFromDatabase();
+        }
     }
     public static class AppSession
     {
         public static User CurrentUser { get; set; }
     }
 }
+
