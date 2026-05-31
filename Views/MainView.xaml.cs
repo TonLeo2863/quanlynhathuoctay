@@ -41,6 +41,17 @@ namespace PharmacySalesApp.Views
 
             this.Close();
         }
-        
+        private void OpenPurchaseView_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var window = new PharmacySalesApp.Views.Purchases.PurchaseView();
+            window.ShowDialog();
+        }
+
+        private void OpenStatisticsView_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            var window = new PharmacySalesApp.Views.Statistics.StatisticsView();
+            window.ShowDialog();
+        }
+
     }
 }

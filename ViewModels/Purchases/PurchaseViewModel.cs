@@ -1,182 +1,275 @@
-﻿using PharmacySalesApp.Models.Purchases;
+﻿using PharmacySalesApp.Commands;
+using PharmacySalesApp.Helper;
+using PharmacySalesApp.Models.Purchases;
 using PharmacySalesApp.Repositories.Purchases;
-using PharmacySalesApp.Repositories.Purchases.quanlynhathuoctay.Models.Purchases;
+using PharmacySalesApp.ViewModels;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
 namespace PharmacySalesApp.ViewModels.Purchases
 {
-    public class PurchaseViewModel : INotifyPropertyChanged
+    public class PurchaseViewModel : BaseViewModel
     {
-        private readonly PurchaseRepository _repository;
+        private readonly PurchaseInvoiceRepository _repository = new PurchaseInvoiceRepository();
 
-        public ObservableCollection<NhaCungCapModel> NhaCungCaps { get; set; }
-        public ObservableCollection<ThuocModel> Thuocs { get; set; }
-        public ObservableCollection<ChiTietPhieuNhapModel> DanhSachChiTiet { get; set; }
+        public ObservableCollection<SupplierOption> Suppliers { get; } = new ObservableCollection<SupplierOption>();
+        public ObservableCollection<MedicineOption> Medicines { get; } = new ObservableCollection<MedicineOption>();
+        public ObservableCollection<PurchaseInvoiceLine> Lines { get; } = new ObservableCollection<PurchaseInvoiceLine>();
 
-        private NhaCungCapModel _selectedNhaCungCap;
-        public NhaCungCapModel SelectedNhaCungCap
+        private SupplierOption _selectedSupplier;
+        public SupplierOption SelectedSupplier
         {
-            get => _selectedNhaCungCap;
-            set { _selectedNhaCungCap = value; OnPropertyChanged(nameof(SelectedNhaCungCap)); }
+            get => _selectedSupplier;
+            set
+            {
+                _selectedSupplier = value;
+                OnPropertyChanged();
+            }
         }
 
-        private ThuocModel _selectedThuoc;
-        public ThuocModel SelectedThuoc
+        private MedicineOption _selectedMedicine;
+        public MedicineOption SelectedMedicine
         {
-            get => _selectedThuoc;
-            set { _selectedThuoc = value; OnPropertyChanged(nameof(SelectedThuoc)); }
+            get => _selectedMedicine;
+            set
+            {
+                _selectedMedicine = value;
+                OnPropertyChanged();
+
+                if (value != null && ImportPrice <= 0)
+                    ImportPrice = value.ImportPrice;
+            }
         }
 
-        private string _soLo;
-        public string SoLo
+        private string _batchNumber = "";
+        public string BatchNumber
         {
-            get => _soLo;
-            set { _soLo = value; OnPropertyChanged(nameof(SoLo)); }
+            get => _batchNumber;
+            set
+            {
+                _batchNumber = value;
+                OnPropertyChanged();
+            }
         }
 
-        private DateTime _hanSuDung = DateTime.Now.AddMonths(1);
-        public DateTime HanSuDung
+        private DateTime _expiryDate = DateTime.Today.AddYears(2);
+        public DateTime ExpiryDate
         {
-            get => _hanSuDung;
-            set { _hanSuDung = value; OnPropertyChanged(nameof(HanSuDung)); }
+            get => _expiryDate;
+            set
+            {
+                _expiryDate = value;
+                OnPropertyChanged();
+            }
         }
 
-        private string _soLuong;
-        public string SoLuong
+        private int _quantity = 1;
+        public int Quantity
         {
-            get => _soLuong;
-            set { _soLuong = value; OnPropertyChanged(nameof(SoLuong)); }
+            get => _quantity;
+            set
+            {
+                _quantity = value;
+                OnPropertyChanged();
+            }
         }
 
-        private string _giaNhap;
-        public string GiaNhap
+        private decimal _importPrice;
+        public decimal ImportPrice
         {
-            get => _giaNhap;
-            set { _giaNhap = value; OnPropertyChanged(nameof(GiaNhap)); }
+            get => _importPrice;
+            set
+            {
+                _importPrice = value;
+                OnPropertyChanged();
+            }
         }
 
-        private decimal _tongTien;
-        public decimal TongTien
+        private string _note = "";
+        public string Note
         {
-            get => _tongTien;
-            set { _tongTien = value; OnPropertyChanged(nameof(TongTien)); }
+            get => _note;
+            set
+            {
+                _note = value;
+                OnPropertyChanged();
+            }
         }
 
-        public ICommand ThemThuocCommand { get; }
-        public ICommand LuuPhieuNhapCommand { get; }
+        private PurchaseInvoiceLine _selectedLine;
+        public PurchaseInvoiceLine SelectedLine
+        {
+            get => _selectedLine;
+            set
+            {
+                _selectedLine = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private decimal _totalAmount;
+        public decimal TotalAmount
+        {
+            get => _totalAmount;
+            set
+            {
+                _totalAmount = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ICommand LoadCommand { get; }
+        public ICommand AddLineCommand { get; }
+        public ICommand RemoveLineCommand { get; }
+        public ICommand SaveCommand { get; }
+        public ICommand ClearCommand { get; }
 
         public PurchaseViewModel()
         {
-            _repository = new PurchaseRepository();
-            DanhSachChiTiet = new ObservableCollection<ChiTietPhieuNhapModel>();
+            LoadCommand = new RelayCommand(_ => LoadData());
+            AddLineCommand = new RelayCommand(_ => AddLine());
+            RemoveLineCommand = new RelayCommand(_ => RemoveLine(), _ => SelectedLine != null);
+            SaveCommand = new RelayCommand(_ => SavePurchaseInvoice());
+            ClearCommand = new RelayCommand(_ => ClearForm());
 
             LoadData();
-
-            ThemThuocCommand = new RelayCommand(ThemThuoc);
-            LuuPhieuNhapCommand = new RelayCommand(LuuPhieuNhap);
         }
 
         private void LoadData()
         {
             try
             {
-                NhaCungCaps = new ObservableCollection<NhaCungCapModel>(_repository.GetNhaCungCaps());
-                Thuocs = new ObservableCollection<ThuocModel>(_repository.GetThuocs());
+                Suppliers.Clear();
+                Medicines.Clear();
+
+                foreach (var supplier in _repository.GetSuppliers())
+                    Suppliers.Add(supplier);
+
+                foreach (var medicine in _repository.GetMedicines())
+                    Medicines.Add(medicine);
+
+                SelectedSupplier = Suppliers.FirstOrDefault();
+                SelectedMedicine = Medicines.FirstOrDefault();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi kết nối CSDL: " + ex.Message);
+                MessageBox.Show("Lỗi tải dữ liệu phiếu nhập: " + ex.Message);
             }
         }
 
-        private void ThemThuoc(object obj)
+        private void AddLine()
         {
-            // Validation
-            if (SelectedThuoc == null) { MessageBox.Show("Vui lòng chọn thuốc!"); return; }
-            if (string.IsNullOrWhiteSpace(SoLo)) { MessageBox.Show("Vui lòng nhập số lô!"); return; }
-            if (HanSuDung <= DateTime.Now) { MessageBox.Show("Hạn sử dụng phải lớn hơn ngày hiện tại!"); return; }
-            if (!int.TryParse(SoLuong, out int sl) || sl <= 0) { MessageBox.Show("Số lượng phải là số nguyên > 0!"); return; }
-            if (!decimal.TryParse(GiaNhap, out decimal gia) || gia < 0) { MessageBox.Show("Giá nhập phải >= 0!"); return; }
-
-            var chiTiet = new ChiTietPhieuNhapModel
+            if (SelectedMedicine == null)
             {
-                MaThuoc = SelectedThuoc.MaThuoc,
-                TenThuoc = SelectedThuoc.TenThuoc,
-                SoLo = SoLo,
-                HanSuDung = HanSuDung,
-                SoLuong = sl,
-                GiaNhap = gia
-            };
-
-            DanhSachChiTiet.Add(chiTiet);
-            TinhTongTien();
-
-            // Reset form nhập liệu
-            SoLo = "";
-            SoLuong = "";
-            GiaNhap = "";
-            SelectedThuoc = null;
-        }
-
-        private void LuuPhieuNhap(object obj)
-        {
-            if (SelectedNhaCungCap == null) { MessageBox.Show("Vui lòng chọn nhà cung cấp!"); return; }
-            if (DanhSachChiTiet.Count == 0) { MessageBox.Show("Danh sách nhập hàng trống!"); return; }
-
-            var phieuNhap = new PhieuNhapModel
-            {
-                MaNhaCungCap = SelectedNhaCungCap.MaNhaCungCap,
-                TongTien = TongTien
-            };
-
-            bool success = _repository.SavePhieuNhap(phieuNhap, DanhSachChiTiet.ToList());
-
-            if (success)
-            {
-                MessageBox.Show("Lưu phiếu nhập thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                DanhSachChiTiet.Clear();
-                TinhTongTien();
+                MessageBox.Show("Vui lòng chọn thuốc.");
+                return;
             }
-            else
+
+            if (string.IsNullOrWhiteSpace(BatchNumber))
             {
-                MessageBox.Show("Lưu phiếu nhập thất bại. Vui lòng kiểm tra lại!", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Vui lòng nhập số lô.");
+                return;
+            }
+
+            if (ExpiryDate.Date <= DateTime.Today)
+            {
+                MessageBox.Show("Hạn sử dụng phải lớn hơn ngày hiện tại.");
+                return;
+            }
+
+            if (Quantity <= 0)
+            {
+                MessageBox.Show("Số lượng nhập phải lớn hơn 0.");
+                return;
+            }
+
+            if (ImportPrice < 0)
+            {
+                MessageBox.Show("Giá nhập không được âm.");
+                return;
+            }
+
+            Lines.Add(new PurchaseInvoiceLine
+            {
+                MedicineId = SelectedMedicine.Id,
+                MedicineCode = SelectedMedicine.Code,
+                MedicineName = SelectedMedicine.Name,
+                BatchNumber = BatchNumber.Trim(),
+                ExpiryDate = ExpiryDate.Date,
+                Quantity = Quantity,
+                ImportPrice = ImportPrice
+            });
+
+            CalculateTotal();
+
+            BatchNumber = "";
+            Quantity = 1;
+            ImportPrice = SelectedMedicine.ImportPrice;
+        }
+
+        private void RemoveLine()
+        {
+            if (SelectedLine == null)
+                return;
+
+            Lines.Remove(SelectedLine);
+            CalculateTotal();
+        }
+
+        private void SavePurchaseInvoice()
+        {
+            if (SelectedSupplier == null)
+            {
+                MessageBox.Show("Vui lòng chọn nhà cung cấp.");
+                return;
+            }
+
+            if (Lines.Count == 0)
+            {
+                MessageBox.Show("Phiếu nhập chưa có chi tiết thuốc.");
+                return;
+            }
+
+            try
+            {
+                int employeeId = AppSession.CurrentUser?.Id ?? 1;
+                int branchId = 1;
+
+                string code = _repository.SavePurchaseInvoice(
+                    SelectedSupplier.Id,
+                    branchId,
+                    employeeId,
+                    Lines.ToList(),
+                    Note);
+
+                MessageBox.Show("Lưu phiếu nhập thành công: " + code);
+
+                ClearForm();
+                LoadData();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi lưu phiếu nhập: " + ex.Message);
             }
         }
 
-        private void TinhTongTien()
+        private void ClearForm()
         {
-            TongTien = DanhSachChiTiet.Sum(x => x.ThanhTien);
+            Lines.Clear();
+            Note = "";
+            BatchNumber = "";
+            Quantity = 1;
+            ImportPrice = 0;
+            ExpiryDate = DateTime.Today.AddYears(2);
+            CalculateTotal();
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged(string propertyName) =>
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    // Lớp RelayCommand chuẩn dùng nội bộ cho ViewModel này
-    public class RelayCommand : ICommand
-    {
-        private readonly Action<object> _execute;
-        private readonly Predicate<object> _canExecute;
-        public RelayCommand(Action<object> execute, Predicate<object> canExecute = null)
+        private void CalculateTotal()
         {
-            _execute = execute;
-            _canExecute = canExecute;
-        }
-        public bool CanExecute(object parameter) => _canExecute == null || _canExecute(parameter);
-        public void Execute(object parameter) => _execute(parameter);
-        public event EventHandler CanExecuteChanged
-        {
-            add { CommandManager.RequerySuggested += value; }
-            remove { CommandManager.RequerySuggested -= value; }
+            TotalAmount = Lines.Sum(x => x.Total);
         }
     }
 }
