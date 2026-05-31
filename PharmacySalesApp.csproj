@@ -6,6 +6,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ReferencePath>C:\Program Files (x86)\SAP BusinessObjects\Crystal Reports for .NET Framework 4.0\Common\SAP BusinessObjects Enterprise XI 4.0\win64_x64\dotnet\</ReferencePath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Images\**" />
@@ -19,8 +20,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="CrystalDecisions.CrystalReports.Engine" Version="1.0.0" />
+    <PackageReference Include="CrystalDecisions.Shared" Version="1.0.0" />
+    <PackageReference Include="CrystalDecisions.Windows.Forms" Version="1.0.0" />
     <PackageReference Include="EPPlus" Version="8.4.2" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Service Include="{c0c07587-41a7-46c8-8fbd-3f9c8ebe2ddc}" />
   </ItemGroup>
 
 </Project>

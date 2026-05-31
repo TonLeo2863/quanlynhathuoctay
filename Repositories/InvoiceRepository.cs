@@ -194,8 +194,8 @@ namespace PharmacySalesApp.Repositories
                     MaKhuyenMai,
                     SoLuong,
                     DonGiaBan,
-                    TienGiam,
-                    ThanhTien
+                    TienGiam
+                    
                 )
                 VALUES
                 (
@@ -205,8 +205,8 @@ namespace PharmacySalesApp.Repositories
                     NULL,
                     @SoLuong,
                     @DonGiaBan,
-                    0,
-                    @ThanhTien
+                    0
+                    
                 )";
 
             using SqlCommand cmd = new SqlCommand(sql, con, tran);
@@ -215,7 +215,7 @@ namespace PharmacySalesApp.Repositories
             cmd.Parameters.AddWithValue("@MaTonKhoLo", lotId);
             cmd.Parameters.AddWithValue("@SoLuong", quantity);
             cmd.Parameters.AddWithValue("@DonGiaBan", unitPrice);
-            cmd.Parameters.AddWithValue("@ThanhTien", lineTotal);
+            
 
             cmd.ExecuteNonQuery();
         }
