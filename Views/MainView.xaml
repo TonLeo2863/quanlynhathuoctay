@@ -156,9 +156,10 @@
 
         <!-- MAIN CONTENT -->
         <TabControl Grid.Row="1"
-                Margin="10"
-                Background="Transparent"
-                BorderThickness="0">
+        Margin="10"
+        Background="Transparent"
+        BorderThickness="0"
+        SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
 
             <!-- TAB QUẢN LÝ THUỐC: Admin + Manager -->
             <TabItem Header="💊 Quản lý thuốc"
@@ -468,6 +469,29 @@
 
                             <StackPanel DockPanel.Dock="Bottom"
                                     Margin="0,15,0,0">
+                                    <TextBlock Text="Số điện thoại khách hàng"
+                                        Foreground="#4B5563"
+                                        FontWeight="SemiBold"
+                                        Margin="0,0,0,5"/>
+
+                                <StackPanel Orientation="Horizontal"
+                                            Margin="0,0,0,10">
+                                    <TextBox Text="{Binding CustomerPhone, UpdateSourceTrigger=PropertyChanged}"
+                                            Width="250"
+                                            ToolTip="Nhập số điện thoại khách hàng"/>
+
+                                    <Button Content="Tìm"
+                                            Width="70"
+                                            Height="36"
+                                            Margin="8,4,0,0"
+                                            Background="#10B981"
+                                            Command="{Binding FindCustomerCommand}"/>
+                                </StackPanel>
+
+                                <TextBlock Text="{Binding SelectedCustomer.CustomerName, StringFormat=Khách hàng: {0}}"
+                                        Foreground="#065F46"
+                                        FontWeight="Bold"
+                                        Margin="0,0,0,10"/>
 
                                 <TextBlock Text="Ghi chú / hướng dẫn sử dụng"
                                        Foreground="#4B5563"
@@ -514,84 +538,150 @@
             </TabItem>
 
             <!-- TAB KHÁCH HÀNG: Tất cả quyền có bán hàng đều thấy -->
-            <TabItem Header="👥 Khách hàng"
-                 Visibility="{Binding CanSell, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TabItem Header="👥 Khách hàng"
+                    Visibility="{Binding CanSell, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Border Style="{StaticResource AppleBox}">
-                    <DockPanel>
-                        <TextBlock DockPanel.Dock="Top"
-                               Text="Quản lý khách hàng"
-                               FontSize="18"
-                               FontWeight="Bold"
-                               Foreground="#111827"
-                               Margin="0,0,0,12"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1*"/>
+                        </Grid.ColumnDefinitions>
 
-                        <Border DockPanel.Dock="Top"
-                            Background="#EEF2FF"
-                            BorderBrush="#C7D2FE"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="12"
-                            Margin="0,0,0,15">
-                            <TextBlock Text="Màn hình này sẽ nâng cấp ở bước sau: thêm/sửa/xóa khách hàng, tìm theo số điện thoại, xem điểm tích lũy và lịch sử mua hàng."
-                                   TextWrapping="Wrap"
-                                   Foreground="#3730A3"/>
-                        </Border>
+                        <Grid Grid.Column="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="2*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="1.2*"/>
+                            </Grid.RowDefinitions>
 
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*"/>
-                                <ColumnDefinition Width="1*"/>
-                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Row="0"
+                                    Text="Quản lý khách hàng"
+                                    FontSize="18"
+                                    FontWeight="Bold"
+                                    Foreground="#111827"
+                                    Margin="0,0,0,12"/>
 
-                            <DataGrid Grid.Column="0">
+                            <StackPanel Grid.Row="0"
+                                        Orientation="Horizontal"
+                                        HorizontalAlignment="Right"
+                                        Margin="0,0,0,12">
+                                <TextBox Width="230"
+                                        Text="{Binding CustomerSearchPhone, UpdateSourceTrigger=PropertyChanged}"
+                                        ToolTip="Nhập số điện thoại"/>
+
+                                <Button Content="Tìm SĐT"
+                                        Width="90"
+                                        Height="36"
+                                        Margin="8,4,0,0"
+                                        Background="#10B981"
+                                        Command="{Binding SearchCustomerCommand}"/>
+
+                                <Button Content="Làm mới"
+                                        Width="90"
+                                        Height="36"
+                                        Margin="8,4,0,0"
+                                        Background="#6B7280"
+                                        Command="{Binding ReloadCustomerCommand}"/>
+                            </StackPanel>
+
+                            <DataGrid Grid.Row="1"
+                                    ItemsSource="{Binding Customers}"
+                                    SelectedItem="{Binding SelectedCustomerInList, Mode=TwoWay}">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Mã KH" Width="100"/>
-                                    <DataGridTextColumn Header="Họ tên" Width="*"/>
-                                    <DataGridTextColumn Header="SĐT" Width="140"/>
-                                    <DataGridTextColumn Header="Điểm" Width="100"/>
-                                    <DataGridTextColumn Header="Tổng mua" Width="140"/>
+                                    <DataGridTextColumn Header="Mã KH" Binding="{Binding CustomerCode}" Width="110"/>
+                                    <DataGridTextColumn Header="Họ tên" Binding="{Binding CustomerName}" Width="*"/>
+                                    <DataGridTextColumn Header="SĐT" Binding="{Binding Phone}" Width="130"/>
+                                    <DataGridTextColumn Header="Điểm" Binding="{Binding LoyaltyPoints}" Width="80"/>
+                                    <DataGridTextColumn Header="Tổng mua" Binding="{Binding TotalSpent, StringFormat={}{0:N0} đ}" Width="140"/>
                                 </DataGrid.Columns>
                             </DataGrid>
 
-                            <Border Grid.Column="1"
+                            <TextBlock Grid.Row="2"
+                                    Text="Lịch sử mua hàng"
+                                    FontSize="16"
+                                    FontWeight="Bold"
+                                    Margin="0,15,0,8"/>
+
+                            <DataGrid Grid.Row="3"
+                                    ItemsSource="{Binding CustomerInvoices}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Mã HĐ" Binding="{Binding InvoiceId}" Width="130"/>
+                                    <DataGridTextColumn Header="Ngày mua" Binding="{Binding CreatedDate, StringFormat=dd/MM/yyyy HH:mm}" Width="160"/>
+                                    <DataGridTextColumn Header="Tổng tiền" Binding="{Binding TotalAmount, StringFormat={}{0:N0} đ}" Width="130"/>
+                                    <DataGridTextColumn Header="Ghi chú" Binding="{Binding Note}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+
+                        <Border Grid.Column="1"
                                 Background="#F9FAFB"
                                 CornerRadius="10"
                                 Padding="15"
                                 Margin="15,0,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="Thông tin khách hàng"
-                                           FontSize="16"
-                                           FontWeight="Bold"
-                                           Margin="0,0,0,12"/>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel>
+                                <TextBlock Text="Thông tin khách hàng"
+                                        FontSize="16"
+                                        FontWeight="Bold"
+                                        Margin="0,0,0,12"/>
 
-                                    <TextBlock Text="Họ tên"/>
-                                    <TextBox/>
+                                <TextBlock Text="Họ tên"/>
+                                <TextBox Text="{Binding CustomerName, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                    <TextBlock Text="Số điện thoại" Margin="0,12,0,0"/>
-                                    <TextBox/>
+                                <TextBlock Text="Số điện thoại" Margin="0,12,0,0"/>
+                                <TextBox Text="{Binding CustomerPhoneInput, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                    <TextBlock Text="Email" Margin="0,12,0,0"/>
-                                    <TextBox/>
+                                <TextBlock Text="Email" Margin="0,12,0,0"/>
+                                <TextBox Text="{Binding CustomerEmail, UpdateSourceTrigger=PropertyChanged}"/>
 
-                                    <TextBlock Text="Địa chỉ" Margin="0,12,0,0"/>
-                                    <TextBox Height="60"
-                                         TextWrapping="Wrap"
-                                         AcceptsReturn="True"
-                                         VerticalContentAlignment="Top"/>
+                                <TextBlock Text="Địa chỉ" Margin="0,12,0,0"/>
+                                <TextBox Text="{Binding CustomerAddress, UpdateSourceTrigger=PropertyChanged}"
+                                        Height="60"
+                                        TextWrapping="Wrap"
+                                        AcceptsReturn="True"
+                                        VerticalContentAlignment="Top"/>
 
-                                    <Button Content="Thêm khách hàng"
+                                <Border Background="#ECFDF5"
+                                        BorderBrush="#A7F3D0"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="10"
+                                        Margin="0,15,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Điểm tích lũy"
+                                                Foreground="#065F46"
+                                                FontWeight="Bold"/>
+                                        <TextBlock Text="{Binding SelectedCustomerInList.LoyaltyPoints}"
+                                                FontSize="24"
+                                                FontWeight="Bold"
+                                                Foreground="#10B981"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Button Content="Thêm khách hàng"
                                         Height="40"
                                         Background="#3B82F6"
-                                        Margin="0,18,0,0"/>
+                                        Margin="0,18,0,0"
+                                        Command="{Binding AddCustomerCommand}"/>
 
-                                    <Button Content="Cập nhật"
+                                <Button Content="Cập nhật"
                                         Height="40"
                                         Background="#F59E0B"
-                                        Margin="0,10,0,0"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-                    </DockPanel>
+                                        Margin="0,10,0,0"
+                                        Command="{Binding UpdateCustomerCommand}"/>
+
+                                <Button Content="Xóa khách hàng"
+                                        Height="40"
+                                        Background="#EF4444"
+                                        Margin="0,10,0,0"
+                                        Command="{Binding DeleteCustomerCommand}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        </Border>
+                    </Grid>
                 </Border>
             </TabItem>
 

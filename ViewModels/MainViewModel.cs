@@ -26,6 +26,7 @@ namespace PharmacySalesApp.ViewModels
         public bool IsNhanVien => RoleHelper.IsNhanVien(AppSession.CurrentUser?.Role);
         public bool CanManageSystem => RoleHelper.CanManageSystem(AppSession.CurrentUser?.Role);
         public bool CanManageStore => RoleHelper.CanManageStore(AppSession.CurrentUser?.Role);
+        public int DefaultTabIndex => 0;
         public bool CanSell => RoleHelper.CanSell(AppSession.CurrentUser?.Role);
         public bool CanViewReports => RoleHelper.CanViewReports(AppSession.CurrentUser?.Role);
         public bool CanManageEmployees => RoleHelper.CanManageEmployees(AppSession.CurrentUser?.Role);
@@ -55,6 +56,12 @@ namespace PharmacySalesApp.ViewModels
         public ICommand PrintBillCommand { get; }
         public ICommand ImportStockCommand { get; }
         public ICommand ImportExcelCommand { get; }
+        public ICommand AddCustomerCommand { get; }
+        public ICommand UpdateCustomerCommand { get; }
+        public ICommand DeleteCustomerCommand { get; }
+        public ICommand SearchCustomerCommand { get; }
+        public ICommand ReloadCustomerCommand { get; }
+        public ICommand FindCustomerCommand { get; }
 
         // ===== NOTIFICATION / LOADING =====
         private bool _isNotificationVisible;
@@ -63,7 +70,16 @@ namespace PharmacySalesApp.ViewModels
             get => _isNotificationVisible;
             set { _isNotificationVisible = value; OnPropertyChanged(); }
         }
-
+        private string _customerSearchPhone = "";
+        public string CustomerSearchPhone
+        {
+            get => _customerSearchPhone;
+            set
+            {
+                _customerSearchPhone = value;
+                OnPropertyChanged();
+            }
+        }
         private string _notificationMessage = string.Empty;
         public string NotificationMessage
         {
@@ -107,6 +123,16 @@ namespace PharmacySalesApp.ViewModels
         {
             get => _code;
             set { _code = value; OnPropertyChanged(); }
+        }
+        private int _selectedTabIndex;
+        public int SelectedTabIndex
+        {
+            get => _selectedTabIndex;
+            set
+            {
+                _selectedTabIndex = value;
+                OnPropertyChanged();
+            }
         }
 
         private string _name = string.Empty;
@@ -175,12 +201,59 @@ namespace PharmacySalesApp.ViewModels
                 RaiseCommand(AddToCartCommand);
             }
         }
+        public ObservableCollection<Customer> Customers { get; } = new ObservableCollection<Customer>();
+
+        private Customer _selectedCustomerInList;
+        public Customer SelectedCustomerInList
+        {
+            get => _selectedCustomerInList;
+            set
+            {
+                _selectedCustomerInList = value;
+                OnPropertyChanged();
+
+                if (value != null)
+                {
+                    CustomerName = value.CustomerName;
+                    CustomerPhoneInput = value.Phone;
+                    CustomerEmail = value.Email;
+                    CustomerAddress = value.Address;
+                }
+            }
+        }
 
         private decimal _totalAmount;
         public decimal TotalAmount
         {
             get => _totalAmount;
             set { _totalAmount = value; OnPropertyChanged(); }
+        }
+        private string _customerName = "";
+        public string CustomerName
+        {
+            get => _customerName;
+            set { _customerName = value; OnPropertyChanged(); }
+        }
+
+        private string _customerPhoneInput = "";
+        public string CustomerPhoneInput
+        {
+            get => _customerPhoneInput;
+            set { _customerPhoneInput = value; OnPropertyChanged(); }
+        }
+
+        private string _customerEmail = "";
+        public string CustomerEmail
+        {
+            get => _customerEmail;
+            set { _customerEmail = value; OnPropertyChanged(); }
+        }
+
+        private string _customerAddress = "";
+        public string CustomerAddress
+        {
+            get => _customerAddress;
+            set { _customerAddress = value; OnPropertyChanged(); }
         }
 
         // ===== IMPORT STOCK =====
@@ -245,15 +318,70 @@ namespace PharmacySalesApp.ViewModels
 
             SelectImageCommand = new RelayCommand(_ => SelectImage());
             ImportExcelCommand = new RelayCommand(async _ => await ImportExcelAsync());
+            AddCustomerCommand = new RelayCommand(_ => AddCustomer());
+            UpdateCustomerCommand = new RelayCommand(_ => UpdateCustomer(), _ => SelectedCustomerInList != null);
+            DeleteCustomerCommand = new RelayCommand(_ => DeleteCustomer(), _ => SelectedCustomerInList != null);
+            SearchCustomerCommand = new RelayCommand(_ => SearchCustomerByPhone());
+            ReloadCustomerCommand = new RelayCommand(_ => ReloadCustomers());
+            FindCustomerCommand = new RelayCommand(_ => FindCustomerByPhone());
+
+            
 
             if (System.ComponentModel.DesignerProperties.GetIsInDesignMode(new DependencyObject()))
                 return;
+            SelectedTabIndex = CanManageStore ? 0 : 1;
+            if (CanManageStore)
+            {
+                LoadMedicinesFromDatabase();
+            }
 
-            LoadMedicinesFromDatabase();
+            if (CanSell)
+            {
+                LoadMedicinesFromDatabase();
+            }
+
             LoadInvoicesFromDatabase();
+            LoadCustomersFromDatabase();
         }
 
         // ===== LOAD DATA =====
+        
+        private void LoadCustomersFromDatabase()
+        {
+            Customers.Clear();
+
+            const string query = @"
+                SELECT MaKhachHang, MaSoKhachHang, HoTen, SoDienThoai, Email, DiaChi, DiemTichLuy, TongTienDaMua
+                FROM dbo.KhachHang
+                ORDER BY MaKhachHang DESC";
+
+            TryRun("Lỗi tải khách hàng", () =>
+            {
+                using (var con = new SqlConnection(App.ConnectionString))
+                using (var cmd = new SqlCommand(query, con))
+                {
+                    con.Open();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Customers.Add(new Customer
+                            {
+                                Id = Convert.ToInt32(reader["MaKhachHang"]),
+                                CustomerCode = reader["MaSoKhachHang"].ToString(),
+                                CustomerName = reader["HoTen"].ToString(),
+                                Phone = reader["SoDienThoai"].ToString(),
+                                Email = reader["Email"].ToString(),
+                                Address = reader["DiaChi"].ToString(),
+                                LoyaltyPoints = Convert.ToInt32(reader["DiemTichLuy"]),
+                                TotalSpent = Convert.ToDecimal(reader["TongTienDaMua"])
+                            });
+                        }
+                    }
+                }
+            });
+        }
         private void LoadMedicinesFromDatabase()
         {
             TryRun("Lỗi tải danh sách thuốc", () =>
@@ -649,35 +777,214 @@ namespace PharmacySalesApp.ViewModels
         }
 
         // ===== CUSTOMER =====
-        private void FindCustomerByPhone()
+        private void SearchCustomerByPhone()
         {
-            const string query = "SELECT * FROM Customers WHERE Phone = @Phone";
+            Customers.Clear();
+
+            string phone = CustomerSearchPhone?.Trim() ?? "";
+
+            if (string.IsNullOrWhiteSpace(phone))
+            {
+                MessageBox.Show("Vui lòng nhập số điện thoại cần tìm.");
+                LoadCustomersFromDatabase();
+                return;
+            }
+
+            const string query = @"
+                SELECT MaKhachHang, MaSoKhachHang, HoTen, SoDienThoai, Email, DiaChi, DiemTichLuy, TongTienDaMua
+                FROM dbo.KhachHang
+                WHERE SoDienThoai LIKE @Phone
+                ORDER BY MaKhachHang DESC";
 
             TryRun("Lỗi tìm khách hàng", () =>
             {
                 using (var con = new SqlConnection(App.ConnectionString))
                 using (var cmd = new SqlCommand(query, con))
                 {
-                    cmd.Parameters.AddWithValue("@Phone", CustomerPhone);
+                    cmd.Parameters.AddWithValue("@Phone", "%" + phone + "%");
 
                     con.Open();
 
                     using (var reader = cmd.ExecuteReader())
                     {
-                        if (!reader.Read()) return;
-
-                        SelectedCustomer = new Customer
+                        while (reader.Read())
                         {
-                            Id = (int)reader["Id"],
-                            CustomerName = reader["CustomerName"].ToString(),
-                            Phone = reader["Phone"].ToString(),
-                            LoyaltyPoints = (int)reader["LoyaltyPoints"]
-                        };
+                            Customers.Add(new Customer
+                            {
+                                Id = Convert.ToInt32(reader["MaKhachHang"]),
+                                CustomerCode = reader["MaSoKhachHang"].ToString() ?? "",
+                                CustomerName = reader["HoTen"].ToString() ?? "",
+                                Phone = reader["SoDienThoai"].ToString() ?? "",
+                                Email = reader["Email"].ToString() ?? "",
+                                Address = reader["DiaChi"].ToString() ?? "",
+                                LoyaltyPoints = Convert.ToInt32(reader["DiemTichLuy"]),
+                                TotalSpent = Convert.ToDecimal(reader["TongTienDaMua"])
+                            });
+                        }
                     }
+                }
+
+                if (Customers.Count == 0)
+                {
+                    MessageBox.Show("Không tìm thấy khách hàng.");
                 }
             });
         }
 
+        private void ReloadCustomers()
+        {
+            CustomerSearchPhone = "";
+            ClearCustomerForm();
+            LoadCustomersFromDatabase();
+        }
+        private void FindCustomerByPhone()
+        {
+            if (string.IsNullOrWhiteSpace(CustomerPhone))
+            {
+                MessageBox.Show("Vui lòng nhập số điện thoại khách hàng.");
+                return;
+            }
+
+            const string query = @"
+                SELECT MaKhachHang, MaSoKhachHang, HoTen, SoDienThoai, Email, DiaChi, DiemTichLuy, TongTienDaMua
+                FROM dbo.KhachHang
+                WHERE SoDienThoai = @Phone";
+
+            TryRun("Lỗi tìm khách hàng", () =>
+            {
+                using (var con = new SqlConnection(App.ConnectionString))
+                using (var cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Phone", CustomerPhone.Trim());
+                    con.Open();
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                        {
+                            SelectedCustomer = null;
+                            MessageBox.Show("Không tìm thấy khách hàng.");
+                            return;
+                        }
+
+                        SelectedCustomer = new Customer
+                        {
+                            Id = Convert.ToInt32(reader["MaKhachHang"]),
+                            CustomerCode = reader["MaSoKhachHang"].ToString() ?? "",
+                            CustomerName = reader["HoTen"].ToString() ?? "",
+                            Phone = reader["SoDienThoai"].ToString() ?? "",
+                            Email = reader["Email"].ToString() ?? "",
+                            Address = reader["DiaChi"].ToString() ?? "",
+                            LoyaltyPoints = Convert.ToInt32(reader["DiemTichLuy"]),
+                            TotalSpent = Convert.ToDecimal(reader["TongTienDaMua"])
+                        };
+
+                        MessageBox.Show("Đã chọn khách hàng: " + SelectedCustomer.CustomerName);
+                    }
+                }
+            });
+        }
+        private void AddCustomer()
+        {
+            if (string.IsNullOrWhiteSpace(CustomerName) || string.IsNullOrWhiteSpace(CustomerPhoneInput))
+            {
+                MessageBox.Show("Vui lòng nhập họ tên và số điện thoại.");
+                return;
+            }
+
+            TryRun("Lỗi thêm khách hàng", () =>
+            {
+                string code = "KH" + DateTime.Now.ToString("yyyyMMddHHmmss");
+
+                const string query = @"
+                    INSERT INTO dbo.KhachHang
+                    (MaSoKhachHang, HoTen, SoDienThoai, Email, DiaChi)
+                    VALUES
+                    (@Code, @Name, @Phone, @Email, @Address)";
+
+                using (var con = new SqlConnection(App.ConnectionString))
+                using (var cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Code", code);
+                    cmd.Parameters.AddWithValue("@Name", CustomerName.Trim());
+                    cmd.Parameters.AddWithValue("@Phone", CustomerPhoneInput.Trim());
+                    cmd.Parameters.AddWithValue("@Email", CustomerEmail ?? "");
+                    cmd.Parameters.AddWithValue("@Address", CustomerAddress ?? "");
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                MessageBox.Show("Thêm khách hàng thành công.");
+                ClearCustomerForm();
+                LoadCustomersFromDatabase();
+            });
+        }
+        private void UpdateCustomer()
+        {
+            if (SelectedCustomerInList == null) return;
+
+            TryRun("Lỗi sửa khách hàng", () =>
+            {
+                const string query = @"
+                    UPDATE dbo.KhachHang
+                    SET HoTen = @Name,
+                        SoDienThoai = @Phone,
+                        Email = @Email,
+                        DiaChi = @Address
+                    WHERE MaKhachHang = @Id";
+
+                using (var con = new SqlConnection(App.ConnectionString))
+                using (var cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Id", SelectedCustomerInList.Id);
+                    cmd.Parameters.AddWithValue("@Name", CustomerName.Trim());
+                    cmd.Parameters.AddWithValue("@Phone", CustomerPhoneInput.Trim());
+                    cmd.Parameters.AddWithValue("@Email", CustomerEmail ?? "");
+                    cmd.Parameters.AddWithValue("@Address", CustomerAddress ?? "");
+
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                MessageBox.Show("Cập nhật khách hàng thành công.");
+                LoadCustomersFromDatabase();
+            });
+        }
+
+        private void DeleteCustomer()
+        {
+            if (SelectedCustomerInList == null) return;
+
+            if (MessageBox.Show("Bạn có chắc muốn xóa khách hàng này?", "Xác nhận", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+                return;
+
+            TryRun("Lỗi xóa khách hàng", () =>
+            {
+                const string query = "DELETE FROM dbo.KhachHang WHERE MaKhachHang = @Id";
+
+                using (var con = new SqlConnection(App.ConnectionString))
+                using (var cmd = new SqlCommand(query, con))
+                {
+                    cmd.Parameters.AddWithValue("@Id", SelectedCustomerInList.Id);
+                    con.Open();
+                    cmd.ExecuteNonQuery();
+                }
+
+                MessageBox.Show("Xóa khách hàng thành công.");
+                ClearCustomerForm();
+                LoadCustomersFromDatabase();
+            });
+        }
+
+        private void ClearCustomerForm()
+        {
+            CustomerName = "";
+            CustomerPhoneInput = "";
+            CustomerEmail = "";
+            CustomerAddress = "";
+            SelectedCustomerInList = null;
+        }
         // ===== HELPERS =====
         private bool ValidateMedicineForm()
         {
@@ -785,10 +1092,15 @@ namespace PharmacySalesApp.ViewModels
         public class Customer
         {
             public int Id { get; set; }
+            public string CustomerCode { get; set; }
             public string CustomerName { get; set; }
             public string Phone { get; set; }
+            public string Email { get; set; }
+            public string Address { get; set; }
             public int LoyaltyPoints { get; set; }
+            public decimal TotalSpent { get; set; }
         }
+
     }
 
     public static class AppSession

@@ -1,4 +1,4 @@
-/* =========================================================
+﻿/* =========================================================
    PharmacyDB_Full_Gon.sql
    Ban SQL da tinh gon nhung van giu cac chuc nang chinh:
    - Phan quyen / tai khoan / nhan vien / chi nhanh
@@ -259,7 +259,7 @@ CREATE TABLE dbo.Thuoc (
     HamLuong NVARCHAR(100),
     SoDangKy NVARCHAR(100),
     CanDonThuoc BIT NOT NULL DEFAULT 0,
-    MaVach VARCHAR(50) NULL UNIQUE,
+    MaVach VARCHAR(50) NULL ,
     MoTa NVARCHAR(1000),
     CongDung NVARCHAR(1000),
     ChongChiDinh NVARCHAR(1000),
@@ -1159,3 +1159,31 @@ SELECT * FROM dbo.vw_Users;
 SELECT * FROM dbo.vw_DanhSachThuocBanHang;
 SELECT * FROM dbo.vw_TonKhoTheoLo;
 GO
+-------------------------------------Thêm REPORT
+CREATE OR ALTER VIEW dbo.vw_Report_HoaDonBan
+AS
+SELECT
+    hd.MaHoaDon,
+    hd.MaSoHoaDon,
+    hd.NgayBan,
+    nv.HoTen AS TenNhanVien,
+    ISNULL(kh.HoTen, N'Khách lẻ') AS TenKhachHang,
+    t.MaSoThuoc,
+    t.TenThuoc,
+    ct.SoLuong,
+    ct.DonGiaBan,
+    ct.ThanhTien,
+    hd.TongThanhToan
+FROM dbo.HoaDonBan hd
+JOIN dbo.ChiTietHoaDon ct
+    ON hd.MaHoaDon = ct.MaHoaDon
+JOIN dbo.Thuoc t
+    ON ct.MaThuoc = t.MaThuoc
+JOIN dbo.NhanVien nv
+    ON hd.MaNhanVien = nv.MaNhanVien
+LEFT JOIN dbo.KhachHang kh
+    ON hd.MaKhachHang = kh.MaKhachHang;
+GO
+
+
+
