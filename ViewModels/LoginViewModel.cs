@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Linq;
 using PharmacySalesApp.Services;
+using PharmacySalesApp.Helper;
 
 namespace PharmacySalesApp.ViewModels
 {
@@ -59,17 +60,17 @@ namespace PharmacySalesApp.ViewModels
 
             AppSession.CurrentUser = user;
 
-            if (user.Role == "NhanVien" || user.Role == "Cashier")
+            if (RoleHelper.IsNhanVien(user.Role))
             {
                 OpenEmployeeMain();
             }
-            else if (user.Role == "Manager" || user.Role == "Admin")
+            else if (RoleHelper.IsManager(user.Role) || RoleHelper.IsAdmin(user.Role))
             {
                 OpenManagerMain();
             }
             else
             {
-                MessageBox.Show("Tài khoản không có quyền truy cập.");
+                MessageBox.Show($"Tài khoản không có quyền truy cập. Role hiện tại: {user.Role}");
             }
         }
 

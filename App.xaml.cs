@@ -7,9 +7,7 @@ namespace PharmacySalesApp
 {
     public partial class App : Application
     {
-        public static string ConnectionString = @"Server=LAPTOP-CVVU9O3R\SQLEXPRESS;Database=PharmacyDB;Trusted_Connection=True;Encrypt=False;";
-
-        public App()
+        public static string ConnectionString = @"Server=CLIENT-WIN10;Database=PharmacyDB;Trusted_Connection=True;Encrypt=False;"; public App()
         {
             this.DispatcherUnhandledException += App_DispatcherUnhandledException;
         }
