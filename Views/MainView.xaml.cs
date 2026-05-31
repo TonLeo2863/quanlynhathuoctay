@@ -41,5 +41,6 @@ namespace PharmacySalesApp.Views
 
             this.Close();
         }
+        
     }
 }
