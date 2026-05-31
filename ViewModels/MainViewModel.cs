@@ -46,6 +46,7 @@ namespace PharmacySalesApp.ViewModels
         public ObservableCollection<Medicine> FilteredMedicines { get; } = new ObservableCollection<Medicine>();
         public ObservableCollection<CartItem> CartItems { get; } = new ObservableCollection<CartItem>();
         public ObservableCollection<Invoice> Invoices { get; } = new ObservableCollection<Invoice>();
+        public ObservableCollection<Invoice> CustomerInvoices { get; } = new ObservableCollection<Invoice>();
 
         // ===== COMMANDS =====
         public ICommand SelectImageCommand { get; }
@@ -218,6 +219,7 @@ namespace PharmacySalesApp.ViewModels
                     CustomerPhoneInput = value.Phone;
                     CustomerEmail = value.Email;
                     CustomerAddress = value.Address;
+                    LoadCustomerInvoices(value.Id);
                 }
             }
         }
@@ -584,6 +586,37 @@ namespace PharmacySalesApp.ViewModels
             foreach (var medicine in result)
                 FilteredMedicines.Add(medicine);
         }
+        private void LoadCustomerInvoices(int maKhachHang)
+        {
+            CustomerInvoices.Clear();
+
+            const string query = @"
+        SELECT MaSoHoaDon, NgayBan, TongThanhToan, ISNULL(GhiChu, N'') AS GhiChu
+        FROM dbo.HoaDonBan
+        WHERE MaKhachHang = @MaKhachHang
+        ORDER BY NgayBan DESC";
+
+            using (var con = new SqlConnection(App.ConnectionString))
+            using (var cmd = new SqlCommand(query, con))
+            {
+                cmd.Parameters.AddWithValue("@MaKhachHang", maKhachHang);
+                con.Open();
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        CustomerInvoices.Add(new Invoice
+                        {
+                            InvoiceId = reader["MaSoHoaDon"].ToString(),
+                            CreatedDate = Convert.ToDateTime(reader["NgayBan"]),
+                            TotalAmount = Convert.ToDecimal(reader["TongThanhToan"]),
+                            Note = reader["GhiChu"].ToString()
+                        });
+                    }
+                }
+            }
+        }
 
         private void AddToCart()
         {
@@ -626,7 +659,28 @@ namespace PharmacySalesApp.ViewModels
             {
                 int createdBy = AppSession.CurrentUser?.Id ?? 1;
 
-                _invoiceRepository.CreateInvoice(CartItems, TotalAmount, InvoiceNote, createdBy);
+                int? maKhachHang = SelectedCustomer?.Id;
+
+                _invoiceRepository.CreateInvoice(CartItems, TotalAmount, InvoiceNote, createdBy, maKhachHang);
+                if (SelectedCustomer != null)
+                {
+                    int diemCong = (int)(TotalAmount / 10000); // 10.000đ = 1 điểm
+
+                    using (var con = new SqlConnection(App.ConnectionString))
+                    using (var cmd = new SqlCommand(@"
+        UPDATE dbo.KhachHang
+        SET DiemTichLuy = DiemTichLuy + @DiemCong,
+            TongTienDaMua = TongTienDaMua + @TongTien
+        WHERE MaKhachHang = @MaKhachHang", con))
+                    {
+                        cmd.Parameters.AddWithValue("@DiemCong", diemCong);
+                        cmd.Parameters.AddWithValue("@TongTien", TotalAmount);
+                        cmd.Parameters.AddWithValue("@MaKhachHang", SelectedCustomer.Id);
+
+                        con.Open();
+                        cmd.ExecuteNonQuery();
+                    }
+                }
 
                 CartItems.Clear();
                 InvoiceNote = string.Empty;
@@ -636,6 +690,7 @@ namespace PharmacySalesApp.ViewModels
 
                 LoadMedicinesFromDatabase();
                 LoadInvoicesFromDatabase();
+                LoadCustomersFromDatabase();
             });
 
             await ShowNotificationAsync("Thanh toán thành công và đã trừ tồn kho!");

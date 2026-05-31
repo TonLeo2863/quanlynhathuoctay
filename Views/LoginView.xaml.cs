@@ -24,5 +24,6 @@ namespace PharmacySalesApp.Views
             InitializeComponent();
             DataContext = new LoginViewModel();
         }
+        
     }
 }

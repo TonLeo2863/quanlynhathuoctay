@@ -1,6 +1,5 @@
 ﻿using PharmacySalesApp.Models.Purchases;
 using PharmacySalesApp.Repositories.Purchases;
-using PharmacySalesApp.Repositories.Purchases.quanlynhathuoctay.Models.Purchases;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -90,6 +89,9 @@ namespace PharmacySalesApp.ViewModels.Purchases
             {
                 NhaCungCaps = new ObservableCollection<NhaCungCapModel>(_repository.GetNhaCungCaps());
                 Thuocs = new ObservableCollection<ThuocModel>(_repository.GetThuocs());
+
+                OnPropertyChanged(nameof(NhaCungCaps));
+                OnPropertyChanged(nameof(Thuocs));
             }
             catch (Exception ex)
             {

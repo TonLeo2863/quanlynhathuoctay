@@ -730,6 +730,16 @@
                                FontWeight="Bold"
                                Foreground="#111827"
                                Margin="0,0,0,12"/>
+                        <Button DockPanel.Dock="Top"
+                        Content="+ Tạo phiếu nhập"
+                        Width="160"
+                        Height="40"
+                        HorizontalAlignment="Right"
+                        Background="#2563EB"
+                        Foreground="White"
+                        FontWeight="Bold"
+                        Margin="0,0,0,12"
+                        Click="OpenPurchase_Click"/>    
 
                         <Border DockPanel.Dock="Top"
                             Background="#ECFDF5"

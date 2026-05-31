@@ -17,7 +17,7 @@ namespace PharmacySalesApp.Views.Purchases
     /// <summary>
     /// Interaction logic for PurchaseView.xaml
     /// </summary>
-    public partial class PurchaseView : Window
+    public partial class PurchaseView : UserControl
     {
         public PurchaseView()
         {

@@ -8,7 +8,12 @@ namespace PharmacySalesApp.Repositories
 {
     public class InvoiceRepository
     {
-        public void CreateInvoice(ObservableCollection<CartItem> cartItems, decimal totalAmount, string note, int createdBy)
+        public void CreateInvoice(
+                                    ObservableCollection<CartItem> cartItems,
+                                    decimal totalAmount,
+                                    string note,
+                                    int createdBy,
+                                    int? maKhachHang)
         {
             using SqlConnection con = new SqlConnection(App.ConnectionString);
             con.Open();
@@ -17,7 +22,7 @@ namespace PharmacySalesApp.Repositories
 
             try
             {
-                int invoiceId = CreateInvoiceHeader(con, tran, totalAmount, note, createdBy);
+                int invoiceId = CreateInvoiceHeader(con, tran, totalAmount, note, createdBy, maKhachHang);
 
                 foreach (var item in cartItems)
                 {
@@ -45,7 +50,7 @@ namespace PharmacySalesApp.Repositories
             }
         }
 
-        private int CreateInvoiceHeader(SqlConnection con, SqlTransaction tran, decimal totalAmount, string note, int createdBy)
+        private int CreateInvoiceHeader(SqlConnection con, SqlTransaction tran, decimal totalAmount, string note, int createdBy, int? maKhachHang)
         {
             string sql = @"
                 INSERT INTO dbo.HoaDonBan
@@ -86,6 +91,8 @@ namespace PharmacySalesApp.Repositories
             cmd.Parameters.AddWithValue("@TongTienHang", totalAmount);
             cmd.Parameters.AddWithValue("@TongThanhToan", totalAmount);
             cmd.Parameters.AddWithValue("@GhiChu", note ?? "");
+            cmd.Parameters.Add("@MaKhachHang", SqlDbType.Int).Value =
+         maKhachHang.HasValue ? maKhachHang.Value : DBNull.Value;
 
             return Convert.ToInt32(cmd.ExecuteScalar());
         }
