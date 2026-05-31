@@ -1,0 +1,57 @@
+﻿<UserControl x:Class="PharmacySalesApp.Views.Statistics.ThongKeDoanhThuView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PharmacySalesApp.ViewModels.Statistics">
+
+    <UserControl.DataContext>
+        <vm:ThongKeDoanhThuViewModel/>
+    </UserControl.DataContext>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Từ ngày:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <DatePicker SelectedDate="{Binding TuNgay}" Width="120" Margin="0,0,15,0"/>
+
+            <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <DatePicker SelectedDate="{Binding DenNgay}" Width="120" Margin="0,0,15,0"/>
+
+            <Button Content="Thống Kê" Command="{Binding ThongKeCommand}" Padding="15,5"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,15">
+            <TextBlock Text="Tổng Hóa Đơn:" FontWeight="Bold" Margin="0,0,5,0"/>
+            <TextBlock Text="{Binding TongSoHoaDon}" Margin="0,0,20,0"/>
+
+            <TextBlock Text="Tổng Doanh Thu:" FontWeight="Bold" Margin="0,0,5,0"/>
+            <TextBlock Text="{Binding TongDoanhThu, StringFormat={}{0:N0} VNĐ}" Foreground="Red" FontWeight="Bold"/>
+        </StackPanel>
+
+        <GroupBox Header="Danh Sách Hóa Đơn Bán" Grid.Row="2" Margin="0,0,0,10">
+            <DataGrid ItemsSource="{Binding DanhSachHoaDon}" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Mã HĐ" Binding="{Binding MaHD}"/>
+                    <DataGridTextColumn Header="Ngày Lập" Binding="{Binding NgayLap, StringFormat=dd/MM/yyyy HH:mm}"/>
+                    <DataGridTextColumn Header="Khách Hàng" Binding="{Binding TenKhachHang}"/>
+                    <DataGridTextColumn Header="Tổng Tiền" Binding="{Binding TongTien, StringFormat={}{0:N0}}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+
+        <GroupBox Header="Doanh Thu Theo Ngày" Grid.Row="3">
+            <DataGrid ItemsSource="{Binding DanhSachGomNhom}" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Ngày" Binding="{Binding ThoiGian}"/>
+                    <DataGridTextColumn Header="Số Hóa Đơn" Binding="{Binding SoLuongHoaDon}"/>
+                    <DataGridTextColumn Header="Doanh Thu" Binding="{Binding TongDoanhThu, StringFormat={}{0:N0}}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </GroupBox>
+    </Grid>
+</UserControl>

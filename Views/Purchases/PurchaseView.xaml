@@ -1,0 +1,81 @@
+﻿<UserControl x:Class="PharmacySalesApp.Views.Purchases.PurchaseView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PharmacySalesApp.Views.Purchases"
+        mc:Ignorable="d"
+         Height="450" Width="800">
+    <UserControl.DataContext>
+        <viewmodels:PurchaseViewModel/>
+    </UserControl.DataContext>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="PHIẾU NHẬP HÀNG" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+
+        <Border Grid.Row="1" BorderBrush="LightGray" BorderThickness="1" Padding="15" Margin="0,0,0,20">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="200"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Text="Nhà Cung Cấp:" VerticalAlignment="Center" Margin="0,0,10,10"/>
+                <ComboBox Grid.Column="1" ItemsSource="{Binding NhaCungCaps}" 
+                          DisplayMemberPath="TenNhaCungCap" SelectedItem="{Binding SelectedNhaCungCap}" Margin="0,0,0,10"/>
+
+                <TextBlock Grid.Column="3" Text="Thuốc:" VerticalAlignment="Center" Margin="0,0,10,10"/>
+                <ComboBox Grid.Column="4" ItemsSource="{Binding Thuocs}" 
+                          DisplayMemberPath="TenThuoc" SelectedItem="{Binding SelectedThuoc}" Margin="0,0,0,10"/>
+
+                <TextBlock Grid.Row="1" Text="Số Lô:" VerticalAlignment="Center" Margin="0,0,10,10"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SoLo, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="3" Text="Hạn Sử Dụng:" VerticalAlignment="Center" Margin="0,0,10,10"/>
+                <DatePicker Grid.Row="1" Grid.Column="4" SelectedDate="{Binding HanSuDung}" Margin="0,0,0,10"/>
+
+                <TextBlock Grid.Row="2" Text="Số Lượng:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding SoLuong, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <TextBlock Grid.Row="2" Grid.Column="3" Text="Giá Nhập:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                <TextBox Grid.Row="2" Grid.Column="4" Text="{Binding GiaNhap, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <Button Grid.Row="2" Grid.Column="4" Content="Thêm vào danh sách" HorizontalAlignment="Right" Width="130" 
+                        Margin="220,0,-150,0" Command="{Binding ThemThuocCommand}" Background="#007ACC" Foreground="White"/>
+            </Grid>
+        </Border>
+
+        <DataGrid Grid.Row="2" ItemsSource="{Binding DanhSachChiTiet}" AutoGenerateColumns="False" CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Tên Thuốc" Binding="{Binding TenThuoc}" Width="*"/>
+                <DataGridTextColumn Header="Số Lô" Binding="{Binding SoLo}" Width="*"/>
+                <DataGridTextColumn Header="Hạn Sử Dụng" Binding="{Binding HanSuDung, StringFormat=dd/MM/yyyy}" Width="*"/>
+                <DataGridTextColumn Header="Số Lượng" Binding="{Binding SoLuong}" Width="*"/>
+                <DataGridTextColumn Header="Giá Nhập" Binding="{Binding GiaNhap, StringFormat=N0}" Width="*"/>
+                <DataGridTextColumn Header="Thành Tiền" Binding="{Binding ThanhTien, StringFormat=N0}" Width="*"/>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <TextBlock Text="Tổng Tiền: " FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding TongTien, StringFormat=N0}" FontSize="18" FontWeight="Bold" Foreground="Red" VerticalAlignment="Center" Margin="0,0,20,0"/>
+            <Button Content="LƯU PHIẾU NHẬP" Command="{Binding LuuPhieuNhapCommand}" Padding="20,10" Background="Green" Foreground="White" FontWeight="Bold"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

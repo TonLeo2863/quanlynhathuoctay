@@ -1,0 +1,75 @@
+﻿<UserControl x:Class="PharmacySalesApp.Views.Reports.ReportView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:PharmacySalesApp.ViewModels.Reports">
+
+    <UserControl.DataContext>
+        <vm:ReportViewModel/>
+    </UserControl.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Orientation="Horizontal" Margin="10">
+            <Button Content="In Hóa Đơn (Mẫu Đơn Giản)" Click="BtnPrintInvoice_Click" Padding="10,5" Margin="0,0,10,0"/>
+            <Button Content="In Báo Cáo (Mẫu Nâng Cao)" Click="BtnPrintReport_Click" Padding="10,5"/>
+        </StackPanel>
+
+        <FlowDocumentScrollViewer Grid.Row="1" x:Name="docViewer">
+            <FlowDocument x:Name="reportDocument" ColumnWidth="800">
+                <Paragraph TextAlignment="Center" FontSize="20" FontWeight="Bold">NHÀ THUỐC TÂY ABC</Paragraph>
+                <Paragraph TextAlignment="Center" FontStyle="Italic">Địa chỉ: 123 Đường XYZ, TP.HCM</Paragraph>
+                <BlockUIContainer>
+                    <Separator/>
+                </BlockUIContainer>
+
+                <Paragraph x:Name="lblReportTitle" TextAlignment="Center" FontSize="18" FontWeight="Bold" Margin="0,10,0,10">BÁO CÁO DOANH THU</Paragraph>
+
+                <Table CellSpacing="0" BorderThickness="1" BorderBrush="Black">
+                    <Table.Columns>
+                        <TableColumn Width="50"/>
+                        <TableColumn Width="200"/>
+                        <TableColumn Width="150"/>
+                        <TableColumn Width="150"/>
+                    </Table.Columns>
+                    <TableRowGroup x:Name="tableData">
+                        <TableRow Background="LightGray">
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph FontWeight="Bold">STT</Paragraph>
+                            </TableCell>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph FontWeight="Bold">Tên Thuốc / Hạng Mục</Paragraph>
+                            </TableCell>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph FontWeight="Bold">Số Lượng</Paragraph>
+                            </TableCell>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph FontWeight="Bold">Thành Tiền</Paragraph>
+                            </TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph>1</Paragraph>
+                            </TableCell>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph>Panadol Extra</Paragraph>
+                            </TableCell>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph>5 vỉ</Paragraph>
+                            </TableCell>
+                            <TableCell BorderThickness="1" BorderBrush="Black">
+                                <Paragraph>75,000</Paragraph>
+                            </TableCell>
+                        </TableRow>
+                    </TableRowGroup>
+                </Table>
+
+                <Paragraph TextAlignment="Right" Margin="0,20,50,0">Người Lập Báo Cáo</Paragraph>
+                <Paragraph TextAlignment="Right" Margin="0,50,60,0">(Ký và ghi rõ họ tên)</Paragraph>
+            </FlowDocument>
+        </FlowDocumentScrollViewer>
+    </Grid>
+</UserControl>

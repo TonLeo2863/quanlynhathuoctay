@@ -15,6 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Models\Reports\" />
+    <Folder Include="Repositories\Reports\" />
     <Folder Include="Services\" />
   </ItemGroup>
 
